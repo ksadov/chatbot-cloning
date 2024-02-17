@@ -1,0 +1,4 @@
+torch==2.2.0
+RAGatouille==0.0.6rc2
+openai==1.12.0
+transformers==4.37.2
