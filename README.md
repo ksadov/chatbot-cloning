@@ -1,4 +1,4 @@
-This repository allows you to recreate the results of [this blogpost](TODO).
+This repository allows you to recreate the results of [this blogpost](https://www.ksadov.com/posts/2024-02-16-rag.html).
 
 # Setup
 This code has been tested with with Python Python 3.9.13.
