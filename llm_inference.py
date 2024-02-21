@@ -46,8 +46,12 @@ def make_completion_request(model, tokenizer, prompt, device):
 
 
 def cleanup_output(output):
-    # trim everything after the first newline that is not at the very start
-    output_trimmed = output.split("\n", 1)[0]
+    # trim everything after the first instance of "friend", if there is one
+    output_trimmed = output.split("friend")[0]
+    # trim whitespace in front and back
+    output_trimmed = output_trimmed.strip()
+    # split by newline, take first line
+    output_trimmed = output_trimmed.split("\n")[0]
     # trim before first :, if there is one
     colon = output_trimmed.find(":")
     if colon != -1:
@@ -56,7 +60,10 @@ def cleanup_output(output):
     periods = [i for i, c in enumerate(output_trimmed) if c == "."]
     if len(periods) > 0:
         output_trimmed = output_trimmed[:periods[-1]+1]
-    # trim whitespace in front and back
+    # get rid of <s> and </s>
+    output_trimmed = output_trimmed.replace("<s>", "")
+    output_trimmed = output_trimmed.replace("</s>", "")
+    # trim whitespace again
     output_trimmed = output_trimmed.strip()
     return output_trimmed
 
@@ -65,6 +72,7 @@ def parse_completion_output(output, prompt):
     # trim prompt off of front of output
     output = output[len(prompt):]
     output_trimmed = cleanup_output(output)
+    # return output_trimmed
     return output_trimmed
 
 
