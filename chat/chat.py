@@ -52,8 +52,8 @@ def setup(config_path, model_name):
     return RAG, config, k, use_openai, client, instruct, device, model, tokenizer, conv_history
 
 
-def make_response(config, query, k, conv_history, instruct, RAG, use_openai, client, model, tokenizer, device, model_name):
-    conv_history.add("friend", query)
+def make_response(config, query, speaker, k, conv_history, instruct, RAG, use_openai, client, model, tokenizer, device, model_name):
+    conv_history.add(speaker, query)
     with HiddenPrints():
         results = RAG.search(query=query, k=k)
     if instruct:
@@ -87,7 +87,7 @@ def chat_loop(config_path, show_prompt, model_name):
         if query == "exit":
             break
         prompt, response = make_response(
-            config, query, k, conv_history, instruct, RAG, use_openai, client, model, tokenizer, device, model_name
+            config, query, "friend", k, conv_history, instruct, RAG, use_openai, client, model, tokenizer, device, model_name
         )
         if show_prompt:
             print("------------------")

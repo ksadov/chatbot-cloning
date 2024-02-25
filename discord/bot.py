@@ -28,7 +28,7 @@ class ChatBot(discord.Client):
                 await message.channel.send("[Conversation history cleared]")
             else:
                 prompt, response = make_response(
-                    self.config, message.content, self.k, self.conv_history, self.instruct, self.RAG, self.use_openai,
+                    self.config, message.content, message.author.name, self.k, self.conv_history, self.instruct, self.RAG, self.use_openai,
                     self.openai_client, self.model, self.tokenizer, self.device, self.config[
                         'name']
                 )
