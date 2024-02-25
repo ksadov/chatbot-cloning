@@ -19,6 +19,9 @@ class ConvHistory:
         if len(self.history) > self.max_length:
             self.history.pop(0)
 
+    def clear(self):
+        self.history = []
+
     def __str__(self):
         return "\n".join([f"{role}: {message}" for role, message in self.history])
 

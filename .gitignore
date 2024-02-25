@@ -3,3 +3,5 @@ extra_data
 extra_configs
 __pycache__
 venv
+discord/configs/*.json
+!discord/configs/example.json

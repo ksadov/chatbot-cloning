@@ -2,10 +2,10 @@ import argparse
 
 import torch
 
-from llm_inference import init_OpenAI, make_openai_request, init_local, make_instruct_request, \
+from chat.llm_inference import init_OpenAI, make_openai_request, init_local, make_instruct_request, \
     make_completion_request
-from utils import ConvHistory, HiddenPrints, parse_json
-from retrieval import init_RAG
+from chat.utils import ConvHistory, HiddenPrints, parse_json
+from chat.retrieval import init_RAG
 
 # silence annoying ragatouille logging
 import logging
@@ -34,7 +34,7 @@ def make_completion_query(name, description, conv_history, rag_results):
     return prompt_str
 
 
-def chat_loop(config_path, show_prompt, model_name):
+def setup(config_path, model_name):
     k = 3
     config = parse_json(config_path)
     RAG = init_RAG(config)
@@ -47,33 +47,48 @@ def chat_loop(config_path, show_prompt, model_name):
     else:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model, tokenizer, instruct = init_local(model_name, device)
+        client = None
     conv_history = ConvHistory()
+    return RAG, config, k, use_openai, client, instruct, device, model, tokenizer, conv_history
+
+
+def make_response(config, query, k, conv_history, instruct, RAG, use_openai, client, model, tokenizer, device, model_name):
+    conv_history.add("friend", query)
+    with HiddenPrints():
+        results = RAG.search(query=query, k=k)
+    if instruct:
+        system, user = make_instruct_query(
+            config['name'], config['description'], conv_history, results
+        )
+        prompt = f"{system} {user}"
+        if use_openai:
+            response = make_openai_request(
+                client, system, user, model_name)
+        elif instruct:
+            response = make_instruct_request(
+                model, tokenizer, prompt, device
+            )
+    else:
+        prompt = make_completion_query(
+            config['name'], config['description'], conv_history, results
+        )
+        response = make_completion_request(
+            model, tokenizer, prompt, device)
+    conv_history.add(config['name'], response)
+    return prompt, response
+
+
+def chat_loop(config_path, show_prompt, model_name):
+    RAG, config, k, use_openai, client, instruct, device, model, tokenizer, conv_history = setup(
+        config_path, model_name
+    )
     while True:
         query = input("> ")
         if query == "exit":
             break
-        conv_history.add("friend", query)
-        with HiddenPrints():
-            results = RAG.search(query=query, k=k)
-        if instruct:
-            system, user = make_instruct_query(
-                config['name'], config['description'], conv_history, results
-            )
-            prompt = f"{system} {user}"
-            if use_openai:
-                response = make_openai_request(
-                    client, system, user, model_name)
-            elif instruct:
-                response = make_instruct_request(
-                    model, tokenizer, prompt, device
-                )
-        else:
-            prompt = make_completion_query(
-                config['name'], config['description'], conv_history, results
-            )
-            response = make_completion_request(
-                model, tokenizer, prompt, device)
-        conv_history.add(config['name'], response)
+        prompt, response = make_response(
+            config, query, k, conv_history, instruct, RAG, use_openai, client, model, tokenizer, device, model_name
+        )
         if show_prompt:
             print("------------------")
             print("PROMPT:")
