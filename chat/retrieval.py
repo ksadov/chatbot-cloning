@@ -14,7 +14,11 @@ from llama_index.core.retrievers import VectorIndexRetriever
 import faiss
 
 
-def prep_document(document_path, delimiter="\n-----\n"):
+def prep_parquet_document(document_path):
+    raise NotImplementedError
+
+
+def prep_txt_document(document_path, delimiter="\n-----\n"):
     with open(document_path, "r") as file:
         full_document = file.read()
     documents = full_document.split(delimiter)
@@ -26,7 +30,12 @@ def init_RAGatouille(index_info):
     index_name = index_info['index_name']
     rag_fname = f".ragatouille/colbert/indexes/{index_name}"
     if not os.path.exists(rag_fname):
-        documents = prep_document(index_info['document_path'])
+        if index_info['document_path'].endswith(".txt"):
+            documents = prep_txt_document(index_info['document_path'])
+        elif index_info['document_path'].endswith(".parquet"):
+            documents = prep_parquet_document(index_info['document_path'])
+        else:
+            raise ValueError("Document path must end with .txt or .parquet")
         RAG = RAGPretrainedModel.from_pretrained("colbert-ir/colbertv2.0")
         RAG.index(
             collection=documents,
