@@ -2,3 +2,7 @@ torch==2.2.0
 RAGatouille==0.0.6rc2
 openai==1.12.0
 transformers==4.37.2
+llama_index==0.1.4
+llama-index-embeddings-huggingface==0.1.4
+llama-index-vector-stores-faiss==0.1.2
+discord.py>=1.5.0

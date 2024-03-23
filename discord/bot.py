@@ -12,7 +12,7 @@ intents.message_content = True
 class ChatBot(discord.Client):
     def __init__(self, config_path, discord_config, model_name):
         super().__init__(intents=intents)
-        self.rag_module, self.config, self.k, self.use_openai, self.openai_client, self.instruct, self.device, self.model, \
+        self.rag_module, self.config, self.use_openai, self.openai_client, self.instruct, self.device, self.model, \
             self.tokenizer, self.conv_history = setup(config_path, model_name)
         self.discord_config = discord_config
 
@@ -28,7 +28,7 @@ class ChatBot(discord.Client):
                 await message.channel.send("[Conversation history cleared]")
             else:
                 prompt, response = make_response(
-                    self.config, message.content, message.author.name, self.k, self.conv_history, self.instruct, self.rag_module, self.use_openai,
+                    self.config, message.content, message.author.name, self.conv_history, self.instruct, self.rag_module, self.use_openai,
                     self.openai_client, self.model, self.tokenizer, self.device, self.config[
                         'name']
                 )

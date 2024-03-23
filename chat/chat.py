@@ -15,7 +15,7 @@ logging.getLogger("ragatouille").setLevel(logging.CRITICAL)
 def make_context_string(rag_results):
     context_string = ""
     for result in rag_results:
-        context_string += f"\n\n- {result['content']}"
+        context_string += f"\n\n- {result}"
     return context_string
 
 
@@ -35,12 +35,11 @@ def make_completion_query(name, description, conv_history, rag_results):
 
 
 def setup(config_path, model_name):
-    k = 3
     config = parse_json(config_path)
-    rag_module = RAGModule(config, "RAGatouille")
+    rag_module = RAGModule(config, k=3)
     use_openai = model_name.startswith("gpt")
     with HiddenPrints():
-        rag_module.search(query="warmup", k=1)
+        rag_module.search(query="warmup")
     if use_openai:
         client = init_OpenAI()
         instruct = True
@@ -49,13 +48,13 @@ def setup(config_path, model_name):
         model, tokenizer, instruct = init_local(model_name, device)
         client = None
     conv_history = ConvHistory()
-    return rag_module, config, k, use_openai, client, instruct, device, model, tokenizer, conv_history
+    return rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history
 
 
-def make_response(config, query, speaker, k, conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name):
+def make_response(config, query, speaker, conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name):
     conv_history.add(speaker, query)
     with HiddenPrints():
-        results = rag_module.search(query=query, k=k)
+        results = rag_module.search(query=query)
     if instruct:
         system, user = make_instruct_query(
             config['name'], config['description'], conv_history, results
@@ -79,7 +78,7 @@ def make_response(config, query, speaker, k, conv_history, instruct, rag_module,
 
 
 def chat_loop(config_path, show_prompt, model_name):
-    rag_module, config, k, use_openai, client, instruct, device, model, tokenizer, conv_history = setup(
+    rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history = setup(
         config_path, model_name
     )
     while True:
@@ -87,7 +86,7 @@ def chat_loop(config_path, show_prompt, model_name):
         if query == "exit":
             break
         prompt, response = make_response(
-            config, query, "friend", k, conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name
+            config, query, "friend", conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name
         )
         if show_prompt:
             print("------------------")

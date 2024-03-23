@@ -1,6 +1,11 @@
 {
   "name": "Zef",
   "description": "a Taiwanese American man interested in esoteric religion and internet culture",
-  "document_path": "data/zef.txt",
-  "index_name": "Zeffy_FB"
+  "index_info": {
+    "type": "HuggingFaceEmbedding",
+    "model_name": "BAAI/bge-large-en-v1.5",
+    "vector_dimension": 1024,
+    "index_name": "Zeffy_FB",
+    "document_path": "data/zef.txt"
+  }
 }
