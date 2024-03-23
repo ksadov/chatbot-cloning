@@ -1,10 +1,11 @@
 import argparse
-
+import time
 import torch
 
 from chat.llm_inference import init_OpenAI, make_openai_request, init_local, make_instruct_request, \
     make_completion_request
-from chat.utils import ConvHistory, HiddenPrints, parse_json
+from chat.utils import HiddenPrints, parse_json
+from chat.conversation import ConvHistory, Message
 from chat.retrieval import RAGModule
 
 # silence annoying ragatouille logging
@@ -51,8 +52,10 @@ def setup(config_path, model_name):
     return rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history
 
 
-def make_response(config, query, speaker, conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name):
-    conv_history.add(speaker, query)
+def make_response(config, query, speaker, conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name, conversation_name):
+    query_timestamp = time.time()
+    conv_history.add(
+        Message(conversation_name, query_timestamp, speaker, query))
     with HiddenPrints():
         results = rag_module.search(query=query)
     if instruct:
@@ -73,7 +76,9 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
         )
         response = make_completion_request(
             model, tokenizer, prompt, device)
-    conv_history.add(config['name'], response)
+    response_timestamp = time.time()
+    conv_history.add(
+        Message(conversation_name, response_timestamp, config['name'], response))
     return prompt, response
 
 
@@ -86,7 +91,7 @@ def chat_loop(config_path, show_prompt, model_name):
         if query == "exit":
             break
         prompt, response = make_response(
-            config, query, "friend", conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name
+            config, query, "friend", conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name, None
         )
         if show_prompt:
             print("------------------")

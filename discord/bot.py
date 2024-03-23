@@ -30,7 +30,8 @@ class ChatBot(discord.Client):
                 prompt, response = make_response(
                     self.config, message.content, message.author.name, self.conv_history, self.instruct, self.rag_module, self.use_openai,
                     self.openai_client, self.model, self.tokenizer, self.device, self.config[
-                        'name']
+                        'name'],
+                    message.channel.name
                 )
                 print("------------------")
                 print(prompt)
