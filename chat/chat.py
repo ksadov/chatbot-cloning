@@ -57,7 +57,8 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
     conv_history.add(
         Message(conversation_name, query_timestamp, speaker, query))
     try:
-        results = rag_module.search(query=query)
+        full_query = conv_history.str_of_depth(config['query_context_depth'])
+        results = rag_module.search(query=full_query)
     except RetrievalError as e:
         results = []
         print(f"Error retrieving documents: {e}")

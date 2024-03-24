@@ -53,8 +53,11 @@ class ConvHistory:
     def clear(self):
         self.history = []
 
-    def __str__(self):
+    def str_of_depth(self, depth):
         if self.include_timestamp:
-            return "\n".join([f"[{message.timestamp}] {message.author}: {message.content}" for message in self.history])
+            return "\n".join([f"[{message.timestamp}] {message.author}: {message.content}" for message in self.history[-depth:]])
         else:
-            return "\n".join([f"{message.author}: {message.content}" for message in self.history])
+            return "\n".join([f"{message.author}: {message.content}" for message in self.history[-depth:]])
+
+    def __str__(self):
+        return self.str_of_depth(len(self.history))

@@ -14,5 +14,6 @@
     "chunk_depth": 5,
     "overlap": null
   },
-  "include_timestamp": true
+  "include_timestamp": true,
+  "query_context_depth": 3
 }
