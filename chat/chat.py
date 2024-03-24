@@ -111,7 +111,7 @@ def main():
         "--model-name", "-m", default="gpt-3.5-turbo", help="model name (gpt model name or huggingface)")
     parser.add_argument("--device", default="cuda",
                         help="Device to use for local model (cpu or cuda)")
-    parser.add_argument("--k", default=5, type=int,)
+    parser.add_argument("--k", default=3, type=int,)
     if not torch.cuda.is_available():
         parser.set_defaults(device="cpu")
 

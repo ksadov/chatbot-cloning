@@ -46,7 +46,36 @@ def prep_parquet_documents(document_path, alias_dict, include_timestamp):
     return documents, metadatas
 
 
-def init_RAGatouille(index_info, include_timestamp):
+def filter_and_chunk(documents, metadatas, chunk_depth, name=None, overlap=0):
+    print("ORIGINAL LENGTH: ", len(documents))
+    filtered_documents = []
+    filtered_metadatas = []
+    # get indexes of documents that contain alias
+    if name is not None:
+        chunking_indexes = [i for i, metadata in enumerate(
+            metadatas) if metadata["author"] == name]
+    else:
+        # indexes should be spaced by overlap
+        chunking_indexes = list(
+            range(0, len(documents), chunk_depth - overlap))
+    # for each document at a chunking index, create a filtered document containting of the previous chunk_depth documents
+    for i in chunking_indexes:
+        if i - chunk_depth < 0:
+            start = 0
+        else:
+            start = i + 1 - chunk_depth
+        chunk_doc = []
+        chunk_metadatas = []
+        for j in range(start, i + 1):
+            chunk_doc.append(documents[j])
+            chunk_metadatas.append(metadatas[j])
+        filtered_documents.append(("\n").join(chunk_doc))
+        filtered_metadatas.append(chunk_metadatas)
+    print("FILTERED AND CHUNKED LENGTH: ", len(filtered_documents))
+    return filtered_documents, filtered_metadatas
+
+
+def init_RAGatouille(index_info, name, include_timestamp):
     print("Initializing RAG...")
     index_name = index_info['index_name']
     rag_fname = f".ragatouille/colbert/indexes/{index_name}"
@@ -56,8 +85,14 @@ def init_RAGatouille(index_info, include_timestamp):
         if index_info['document_path'].endswith(".txt"):
             documents = prep_txt_document(index_info['document_path'])
         elif index_info['document_path'].endswith(".parquet"):
-            documents = prep_parquet_documents(
+            documents, metadata = prep_parquet_documents(
                 index_info['document_path'], index_info['alias_dict'], include_timestamp)
+            if index_info['overlap'] is None:
+                name = name
+            else:
+                name = None
+            documents, metadata = filter_and_chunk(
+                documents, metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap'])
         else:
             raise ValueError("Document path must end with .txt or .parquet")
         RAG = RAGPretrainedModel.from_pretrained("colbert-ir/colbertv2.0")
@@ -71,7 +106,7 @@ def init_RAGatouille(index_info, include_timestamp):
     return RAG
 
 
-def init_HuggingFaceEmbedding(index_info, k, include_timestamp):
+def init_HuggingFaceEmbedding(index_info, k, name, include_timestamp):
     print("Initializing HuggingFaceEmbedding...")
     model_name = index_info['model_name']
     vector_dimension = index_info['vector_dimension']
@@ -87,8 +122,14 @@ def init_HuggingFaceEmbedding(index_info, k, include_timestamp):
         if index_info['document_path'].endswith(".txt"):
             documents = prep_txt_document(index_info['document_path'])
         else:
-            documents, _ = prep_parquet_documents(
+            documents, metadata = prep_parquet_documents(
                 index_info['document_path'], index_info['alias_dict'], include_timestamp=include_timestamp)
+            if index_info['overlap'] is None:
+                name = name
+            else:
+                name = None
+            documents, metadata = filter_and_chunk(
+                documents, metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap'])
         documents = [Document(text=doc) for doc in documents]
         vector_store = FaissVectorStore(faiss_index=faiss_index)
         storage_context = StorageContext.from_defaults(
@@ -114,10 +155,10 @@ class RAGModule:
         self.include_timestamp = config['include_timestamp']
         if self.index_info['type'] == "RAGatouille":
             self.rag_module = init_RAGatouille(
-                self.index_info, self.include_timestamp)
+                self.index_info, config['name'], self.include_timestamp)
         elif self.index_info['type'] == "HuggingFaceEmbedding":
             self.rag_module = init_HuggingFaceEmbedding(
-                self.index_info, k, self.include_timestamp)
+                self.index_info, k, config['name'], self.include_timestamp)
 
     def search(self, query):
         if self.index_info['type'] == "RAGatouille":
