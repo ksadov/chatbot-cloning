@@ -99,7 +99,8 @@ def chat_loop(config_path, show_prompt, model_name, k):
         if query == "exit":
             break
         prompt, response = make_response(
-            config, query, "friend", conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name, None
+            config, query, config["chat_user_name"], conv_history, instruct, rag_module, use_openai, client, model,
+            tokenizer, device, model_name, None
         )
         if show_prompt:
             print("------------------")
