@@ -59,6 +59,8 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
     query_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, query_timestamp, speaker, query))
+    if config['update_rag_index']:
+        conv_history.update_rag_index(rag_module)
     try:
         full_query = conv_history.str_of_depth(config['query_context_depth'])
         results = rag_module.search(query=full_query)
@@ -86,7 +88,8 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
     response_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, response_timestamp, config['name'], response))
-    conv_history.update_rag_index(rag_module)
+    if config['update_rag_index']:
+        conv_history.update_rag_index(rag_module)
     return prompt, response
 
 
