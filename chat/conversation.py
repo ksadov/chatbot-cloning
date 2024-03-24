@@ -5,7 +5,7 @@ import pandas as pd
 class Message():
     def __init__(self, conversation, timestamp, author, content):
         self.conversation = conversation
-        self.timestamp = timestamp
+        self.timestamp = timestamp.strftime("%Y-%m-%d %H:%M")
         self.author = author
         self.content = content
 
@@ -32,7 +32,8 @@ class Message():
 
 
 class ConvHistory:
-    def __init__(self, max_length=5):
+    def __init__(self, include_timestamp, max_length=5):
+        self.include_timestamp = include_timestamp
         self.history = []
         self.max_length = max_length
 
@@ -45,4 +46,7 @@ class ConvHistory:
         self.history = []
 
     def __str__(self):
-        return "\n".join([f"{message.author}: {message.content}" for message in self.history])
+        if self.include_timestamp:
+            return "\n".join([f"[{message.timestamp}] {message.author}: {message.content}" for message in self.history])
+        else:
+            return "\n".join([f"{message.author}: {message.content}" for message in self.history])

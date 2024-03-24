@@ -1,5 +1,5 @@
 import argparse
-import time
+import datetime
 import torch
 
 from chat.llm_inference import init_OpenAI, make_openai_request, init_local, make_instruct_request, \
@@ -48,12 +48,12 @@ def setup(config_path, model_name, k):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model, tokenizer, instruct = init_local(model_name, device)
         client = None
-    conv_history = ConvHistory()
+    conv_history = ConvHistory(config["include_timestamp"])
     return rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history
 
 
 def make_response(config, query, speaker, conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name, conversation_name):
-    query_timestamp = time.time()
+    query_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, query_timestamp, speaker, query))
     with HiddenPrints():
@@ -76,7 +76,7 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
         )
         response = make_completion_request(
             model, tokenizer, prompt, device)
-    response_timestamp = time.time()
+    response_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, response_timestamp, config['name'], response))
     return prompt, response

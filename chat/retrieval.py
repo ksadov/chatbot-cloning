@@ -10,6 +10,7 @@ from llama_index.core import (
     VectorStoreIndex,
     StorageContext,
 )
+import datetime
 import faiss
 import pandas as pd
 
@@ -38,7 +39,7 @@ def prep_parquet_documents(document_path, alias_dict, include_timestamp):
         if metadata['author'] in alias_dict:
             metadata['author'] = alias_dict[str(metadata['author'])]
         if include_timestamp:
-            timestamp_prefix = f"[{metadata['timestamp']}]"
+            timestamp_prefix = f"[{metadata['timestamp'].strftime('%Y-%m-%d %H:%M')}]"
         else:
             timestamp_prefix = ""
         documents[i] = f"{timestamp_prefix} {metadata['author']}: {documents[i]}"
