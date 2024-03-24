@@ -6,7 +6,7 @@ from chat.llm_inference import init_OpenAI, make_openai_request, init_local, mak
     make_completion_request
 from chat.utils import HiddenPrints, parse_json
 from chat.conversation import ConvHistory, Message
-from chat.retrieval import RAGModule
+from chat.retrieval import RAGModule, RetrievalError
 
 # silence annoying ragatouille logging
 import logging
@@ -56,8 +56,11 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
     query_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, query_timestamp, speaker, query))
-    with HiddenPrints():
+    try:
         results = rag_module.search(query=query)
+    except RetrievalError as e:
+        results = []
+        print(f"Error retrieving documents: {e}")
     if instruct:
         system, user = make_instruct_query(
             config['name'], config['description'], conv_history, results
@@ -79,6 +82,7 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
     response_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, response_timestamp, config['name'], response))
+    conv_history.update_rag_index(rag_module)
     return prompt, response
 
 

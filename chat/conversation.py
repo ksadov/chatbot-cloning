@@ -32,15 +32,23 @@ class Message():
 
 
 class ConvHistory:
-    def __init__(self, include_timestamp, max_length=5):
+    def __init__(self, include_timestamp, max_length=5, update_every=5):
         self.include_timestamp = include_timestamp
         self.history = []
         self.max_length = max_length
+        self.update_every = update_every
+        self.update_counter = 0
 
     def add(self, message: Message):
         self.history.append(message)
+        self.update_counter += 1
         if len(self.history) > self.max_length:
             self.history.pop(0)
+
+    def update_rag_index(self, rag_module):
+        if self.update_counter >= self.update_every:
+            self.update_counter = 0
+            rag_module.update(str(self))
 
     def clear(self):
         self.history = []

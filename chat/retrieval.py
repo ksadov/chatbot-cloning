@@ -10,9 +10,13 @@ from llama_index.core import (
     VectorStoreIndex,
     StorageContext,
 )
-import datetime
+from llama_index.core.schema import TextNode
 import faiss
 import pandas as pd
+
+
+class RetrievalError(Exception):
+    pass
 
 
 def prep_txt_document(document_path, delimiter="\n-----\n"):
@@ -103,10 +107,10 @@ def init_RAGatouille(index_info, name, include_timestamp):
             split_documents=True
         )
     RAG = RAGPretrainedModel.from_index(rag_fname)
-    return RAG
+    return RAG, rag_fname
 
 
-def init_HuggingFaceEmbedding(index_info, k, name, include_timestamp):
+def init_HuggingFaceEmbedding(index_info, name, include_timestamp):
     print("Initializing HuggingFaceEmbedding...")
     model_name = index_info['model_name']
     vector_dimension = index_info['vector_dimension']
@@ -144,7 +148,7 @@ def init_HuggingFaceEmbedding(index_info, k, name, include_timestamp):
             vector_store=vector_store, persist_dir=rag_fname
         )
         index = load_index_from_storage(storage_context=storage_context)
-    return index.as_retriever(similarity_top_k=k)
+    return index, rag_fname
 
 
 class RAGModule:
@@ -154,11 +158,12 @@ class RAGModule:
         self.index_info = config['index_info']
         self.include_timestamp = config['include_timestamp']
         if self.index_info['type'] == "RAGatouille":
-            self.rag_module = init_RAGatouille(
+            self.rag_module, self.rag_fname = init_RAGatouille(
                 self.index_info, config['name'], self.include_timestamp)
         elif self.index_info['type'] == "HuggingFaceEmbedding":
-            self.rag_module = init_HuggingFaceEmbedding(
-                self.index_info, k, config['name'], self.include_timestamp)
+            self.rag_index, self.rag_fname = init_HuggingFaceEmbedding(
+                self.index_info, config['name'], self.include_timestamp)
+            self.rag_module = self.rag_index.as_retriever(similarity_top_k=k)
 
     def search(self, query):
         if self.index_info['type'] == "RAGatouille":
@@ -167,3 +172,11 @@ class RAGModule:
         else:
             retrieved = self.rag_module.retrieve(query)
             return [doc.text for doc in retrieved]
+
+    def update(self, document):
+        if self.index_info['type'] == "RAGatouille":
+            raise NotImplementedError("RAGatouille does not support updating")
+        else:
+            node = Document(text=document)
+            self.rag_index.insert(node)
+            self.rag_index.storage_context.persist(persist_dir=self.rag_fname)
