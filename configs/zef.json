@@ -6,6 +6,15 @@
     "model_name": "BAAI/bge-large-en-v1.5",
     "vector_dimension": 1024,
     "index_name": "Zeffy_FB",
-    "document_path": "data/zef.txt"
-  }
+    "document_path": "data/zef.txt",
+    "alias_dict": {},
+    "chunk_depth": 5,
+    "overlap": null
+  },
+  "include_timestamp": true,
+  "query_context_depth": 3,
+  "conversation_history_depth": 5,
+  "update_index_every": 5,
+  "chat_user_name": "friend",
+  "update_rag_index": false
 }
