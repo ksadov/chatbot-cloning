@@ -35,9 +35,9 @@ def make_completion_query(name, description, conv_history, rag_results):
     return prompt_str
 
 
-def setup(config_path, model_name):
+def setup(config_path, model_name, k):
     config = parse_json(config_path)
-    rag_module = RAGModule(config, k=3)
+    rag_module = RAGModule(config, k)
     use_openai = model_name.startswith("gpt")
     with HiddenPrints():
         rag_module.search(query="warmup")
@@ -82,9 +82,9 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
     return prompt, response
 
 
-def chat_loop(config_path, show_prompt, model_name):
+def chat_loop(config_path, show_prompt, model_name, k):
     rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history = setup(
-        config_path, model_name
+        config_path, model_name, k
     )
     while True:
         query = input("> ")
@@ -111,11 +111,12 @@ def main():
         "--model-name", "-m", default="gpt-3.5-turbo", help="model name (gpt model name or huggingface)")
     parser.add_argument("--device", default="cuda",
                         help="Device to use for local model (cpu or cuda)")
+    parser.add_argument("--k", default=5, type=int,)
     if not torch.cuda.is_available():
         parser.set_defaults(device="cpu")
 
     args = parser.parse_args()
-    chat_loop(args.config, args.show_prompt, args.model_name)
+    chat_loop(args.config, args.show_prompt, args.model_name, args.k)
 
 
 if __name__ == "__main__":
