@@ -48,11 +48,14 @@ def setup(config_path, model_name, k):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model, tokenizer, instruct = init_local(model_name, device)
         client = None
-    conv_history = ConvHistory(config["include_timestamp"])
+    conv_history = ConvHistory(
+        config["include_timestamp"], config["conversation_history_depth"], config["update_index_every"]
+    )
     return rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history
 
 
-def make_response(config, query, speaker, conv_history, instruct, rag_module, use_openai, client, model, tokenizer, device, model_name, conversation_name):
+def make_response(config, query, speaker, conv_history, instruct, rag_module, use_openai, client, model, tokenizer,
+                  device, model_name, conversation_name):
     query_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, query_timestamp, speaker, query))

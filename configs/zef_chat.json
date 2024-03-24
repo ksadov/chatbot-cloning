@@ -15,5 +15,7 @@
     "overlap": null
   },
   "include_timestamp": true,
-  "query_context_depth": 3
+  "query_context_depth": 3,
+  "conversation_history_depth": 5,
+  "update_index_every": 5
 }

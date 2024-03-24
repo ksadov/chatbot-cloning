@@ -32,7 +32,7 @@ class Message():
 
 
 class ConvHistory:
-    def __init__(self, include_timestamp, max_length=5, update_every=5):
+    def __init__(self, include_timestamp, max_length, update_every):
         self.include_timestamp = include_timestamp
         self.history = []
         self.max_length = max_length
