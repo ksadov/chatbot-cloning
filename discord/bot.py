@@ -13,7 +13,8 @@ class ChatBot(discord.Client):
     def __init__(self, config_path, discord_config, model_name):
         super().__init__(intents=intents)
         self.rag_module, self.config, self.use_openai, self.openai_client, self.instruct, self.device, self.model, \
-            self.tokenizer, self.conv_history = setup(config_path, model_name)
+            self.tokenizer, self.conv_history = setup(
+                config_path, model_name, k=3)
         self.discord_config = discord_config
 
     async def on_ready(self):
