@@ -32,7 +32,7 @@ def make_metadata_dict(entry):
     return metadata
 
 
-def prep_parquet_documents(document_path, alias_dict, include_timestamp):
+def load_parquet_documents(document_path, alias_dict, include_timestamp):
     df = pd.read_parquet(document_path)
     # convert to list of dictionaries
     entries = df.to_dict(orient="records")
@@ -51,6 +51,22 @@ def prep_parquet_documents(document_path, alias_dict, include_timestamp):
     return documents, metadatas
 
 
+def prep_parquet_documents(document_path, alias_dict, include_timestamp):
+    # check if there are seperate /chat and /blog subdirectories
+    if os.path.exists(os.path.join(document_path, "blog")):
+        chat_documents, chat_metadatas = load_parquet_documents(
+            os.path.join(document_path, "chat"), alias_dict, include_timestamp)
+    if os.path.exists(os.path.join(document_path, "blog")):
+        blog_documents, blog_metadatas = load_parquet_documents(
+            os.path.join(document_path, "blog"), alias_dict, include_timestamp)
+    else:
+        # assuming all are chat documents
+        chat_documents, chat_metadatas = load_parquet_documents(
+            document_path, alias_dict, include_timestamp)
+        blog_documents, blog_metadatas = [], []
+    return chat_documents, chat_metadatas, blog_documents, blog_metadatas
+
+
 def filter_and_chunk(documents, metadatas, chunk_depth, name=None, overlap=0):
     print("ORIGINAL LENGTH: ", len(documents))
     filtered_documents = []
@@ -59,7 +75,6 @@ def filter_and_chunk(documents, metadatas, chunk_depth, name=None, overlap=0):
     unique_conversations = list(set([metadata["conversation"]
                                      for metadata in metadatas]))
     for conversation in unique_conversations:
-        print("processing conversation: ", conversation)
         conv_ids = [i for i, metadata in enumerate(
             metadatas) if metadata["conversation"] == conversation]
         # get indexes of documents that contain alias
@@ -85,6 +100,26 @@ def filter_and_chunk(documents, metadatas, chunk_depth, name=None, overlap=0):
     return filtered_documents, filtered_metadatas
 
 
+def format_blog(blog_documents, blog_metadatas, name, include_timestamp):
+    formatted_blog = []
+    for doc, meta in zip(blog_documents, blog_metadatas):
+        meta['user_id'] = name
+        if include_timestamp:
+            if meta['timestamp'] is not None:
+                timestamp = pd.to_datetime(
+                    meta['timestamp']).strftime('%Y-%m-%d %H:%M')
+                # check if timestamp is before 2000
+                if timestamp.split("-")[0] < "2000":
+                    timestamp = f"Unknown Timestamp"
+            else:
+                timestamp = f"Unknown Timestamp"
+            timestamp_prefix = f"[{timestamp}]"
+        else:
+            timestamp_prefix = ""
+        formatted_blog.append(f"{timestamp_prefix} {name}: {doc}")
+    return formatted_blog, blog_metadatas
+
+
 def init_RAGatouille(index_info, name, include_timestamp):
     print("Initializing RAG...")
     index_name = index_info['index_name']
@@ -95,19 +130,26 @@ def init_RAGatouille(index_info, name, include_timestamp):
         if index_info['document_path'].endswith(".txt"):
             documents = prep_txt_document(index_info['document_path'])
         elif index_info['document_path'].endswith(".parquet"):
-            documents, metadata = prep_parquet_documents(
-                index_info['document_path'], index_info['alias_dict'], include_timestamp)
+            chat_documents, chat_metadata, blog_documents, blog_metadata = prep_parquet_documents(
+                index_info['document_path'], index_info['alias_dict'], include_timestamp
+            )
             if index_info['overlap'] is None:
                 name = name
             else:
                 name = None
-            documents, metadata = filter_and_chunk(
-                documents, metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap'])
+            chat_documents, chat_metadata = filter_and_chunk(
+                chat_documents, chat_metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap'])
+            blog_documents, blog_metadata = format_blog(
+                blog_documents, blog_metadata, name, include_timestamp
+            )
+            documents = chat_documents + blog_documents
+            metadata = chat_metadata + blog_metadata
         else:
             raise ValueError("Document path must end with .txt or .parquet")
         RAG = RAGPretrainedModel.from_pretrained("colbert-ir/colbertv2.0")
         RAG.index(
             collection=documents,
+            metadata=metadata,
             index_name=index_name,
             max_document_length=180,
             split_documents=True
@@ -132,14 +174,20 @@ def init_HuggingFaceEmbedding(index_info, name, include_timestamp):
         if index_info['document_path'].endswith(".txt"):
             documents = prep_txt_document(index_info['document_path'])
         else:
-            documents, metadata = prep_parquet_documents(
+            documents, metadata, blog_documents, blog_metadata = prep_parquet_documents(
                 index_info['document_path'], index_info['alias_dict'], include_timestamp=include_timestamp)
             if index_info['overlap'] is None:
                 name = name
             else:
                 name = None
-            documents, metadata = filter_and_chunk(
-                documents, metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap'])
+            chat_documents, chat_metadata = filter_and_chunk(
+                documents, metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap']
+            )
+            blog_documents, blog_metadata = format_blog(
+                blog_documents, blog_metadata, name, include_timestamp
+            )
+            documents = chat_documents + blog_documents
+            metadata = chat_metadata + blog_metadata
         documents = [Document(text=doc) for doc in documents]
         vector_store = FaissVectorStore(faiss_index=faiss_index)
         storage_context = StorageContext.from_defaults(
