@@ -27,7 +27,7 @@ def prep_txt_document(document_path, delimiter="\n-----\n"):
 
 
 def make_metadata_dict(entry):
-    metadata_fields = ["conversation", "author", "timestamp"]
+    metadata_fields = ["conversation", "user_id", "timestamp"]
     metadata = {field: entry[field] for field in metadata_fields}
     return metadata
 
@@ -40,13 +40,14 @@ def prep_parquet_documents(document_path, alias_dict, include_timestamp):
     metadatas = [make_metadata_dict(entry) for entry in entries]
     # check if alias_field is in metadata
     for i, metadata in enumerate(metadatas):
-        if metadata['author'] in alias_dict:
-            metadata['author'] = alias_dict[str(metadata['author'])]
+        if metadata['user_id'] in alias_dict:
+            metadata['user_id'] = alias_dict[str(metadata['user_id'])]
         if include_timestamp:
-            timestamp_prefix = f"[{metadata['timestamp'].strftime('%Y-%m-%d %H:%M')}]"
+            timestamp = pd.to_datetime(metadata['timestamp'])
+            timestamp_prefix = f"[{timestamp.strftime('%Y-%m-%d %H:%M')}]"
         else:
             timestamp_prefix = ""
-        documents[i] = f"{timestamp_prefix} {metadata['author']}: {documents[i]}"
+        documents[i] = f"{timestamp_prefix} {metadata['user_id']}: {documents[i]}"
     return documents, metadatas
 
 
@@ -54,27 +55,32 @@ def filter_and_chunk(documents, metadatas, chunk_depth, name=None, overlap=0):
     print("ORIGINAL LENGTH: ", len(documents))
     filtered_documents = []
     filtered_metadatas = []
-    # get indexes of documents that contain alias
-    if name is not None:
-        chunking_indexes = [i for i, metadata in enumerate(
-            metadatas) if metadata["author"] == name]
-    else:
-        # indexes should be spaced by overlap
-        chunking_indexes = list(
-            range(0, len(documents), chunk_depth - overlap))
-    # for each document at a chunking index, create a filtered document containting of the previous chunk_depth documents
-    for i in chunking_indexes:
-        if i - chunk_depth < 0:
-            start = 0
+    # partition documents by conversation
+    unique_conversations = list(set([metadata["conversation"]
+                                     for metadata in metadatas]))
+    for conversation in unique_conversations:
+        print("processing conversation: ", conversation)
+        conv_ids = [i for i, metadata in enumerate(
+            metadatas) if metadata["conversation"] == conversation]
+        # get indexes of documents that contain alias
+        if name is not None:
+            chunking_indexes = [i for i in conv_ids if name in documents[i]]
         else:
-            start = i + 1 - chunk_depth
-        chunk_doc = []
-        chunk_metadatas = []
-        for j in range(start, i + 1):
-            chunk_doc.append(documents[j])
-            chunk_metadatas.append(metadatas[j])
-        filtered_documents.append(("\n").join(chunk_doc))
-        filtered_metadatas.append(chunk_metadatas)
+            # indexes should be spaced by overlap
+            chunking_indexes = conv_ids[::chunk_depth - overlap]
+        # for each document at a chunking index, create a filtered document containting of the previous chunk_depth documents
+        for i in chunking_indexes:
+            if i - chunk_depth < 0:
+                start = 0
+            else:
+                start = i + 1 - chunk_depth
+            chunk_doc = []
+            chunk_metadatas = []
+            for j in range(start, i + 1):
+                chunk_doc.append(documents[j])
+                chunk_metadatas.append(metadatas[j])
+            filtered_documents.append(("\n").join(chunk_doc))
+            filtered_metadatas.append(chunk_metadatas)
     print("FILTERED AND CHUNKED LENGTH: ", len(filtered_documents))
     return filtered_documents, filtered_metadatas
 

@@ -16,9 +16,9 @@ def format_discord_date(date):
 
 def process_individual_discord_message(html_file, message, soup):
     conversation = html_file.split('/')[-1].replace('.html', '')
-    author_span = message.find('span', class_='chatlog__author')
-    if author_span:
-        user_id = author_span['title']
+    user_id_span = message.find('span', class_='chatlog__author')
+    if user_id_span:
+        user_id = user_id_span['title']
     else:
         user_id = None
     message_time_span = message.find('span', class_='chatlog__timestamp')
@@ -52,8 +52,12 @@ def process_all_messages(html_file, output_dir):
             try:
                 processed = process_individual_discord_message(
                     html_file, message, soup)
-                if processed.author is None:
-                    processed.author = messages[-1].author
+                if processed.user_id is None:
+                    if len(messages) > 0:
+                        processed.user_id = messages[-1].user_id
+                    else:
+                        print("No user_id found for message:\n", message)
+                        continue
                 if processed.timestamp is None:
                     processed.timestamp = messages[-1].timestamp
                 messages.append(processed)
