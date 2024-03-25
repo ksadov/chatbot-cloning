@@ -1,4 +1,5 @@
 import os
+from tqdm import tqdm
 
 from ragatouille import RAGPretrainedModel
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -32,33 +33,43 @@ def make_metadata_dict(entry):
     return metadata
 
 
-def load_parquet_documents(document_path, alias_dict, include_timestamp):
+def load_parquet_documents(document_path, alias_dict, include_timestamp, name):
     df = pd.read_parquet(document_path)
     # convert to list of dictionaries
     entries = df.to_dict(orient="records")
-    documents = [entry["content"] for entry in entries]
+    documents = [entry["content"].strip() for entry in entries]
     metadatas = [make_metadata_dict(entry) for entry in entries]
     # check if alias_field is in metadata
     for i, metadata in enumerate(metadatas):
+        if metadata['user_id'] is None:
+            metadata['user_id'] = name
         if metadata['user_id'] in alias_dict:
             metadata['user_id'] = alias_dict[str(metadata['user_id'])]
         if include_timestamp:
-            timestamp = pd.to_datetime(metadata['timestamp'])
-            timestamp_prefix = f"[{timestamp.strftime('%Y-%m-%d %H:%M')}]"
+            timestamp = pd.to_datetime(
+                metadata['timestamp']).strftime('%Y-%m-%d %H:%M')
+            # check if timestamp is before 2000
+            if timestamp.split("-")[0] < "2000":
+                timestamp = f"Unknown Timestamp"
+            timestamp_prefix = f"[{timestamp}]"
         else:
             timestamp_prefix = ""
         documents[i] = f"{timestamp_prefix} {metadata['user_id']}: {documents[i]}"
     return documents, metadatas
 
 
-def prep_parquet_documents(document_path, alias_dict, include_timestamp):
+def prep_parquet_documents(document_path, alias_dict, include_timestamp, name):
     # check if there are seperate /chat and /blog subdirectories
     if os.path.exists(os.path.join(document_path, "blog")):
         chat_documents, chat_metadatas = load_parquet_documents(
-            os.path.join(document_path, "chat"), alias_dict, include_timestamp)
+            os.path.join(
+                document_path, "chat"), alias_dict, include_timestamp, name
+        )
     if os.path.exists(os.path.join(document_path, "blog")):
         blog_documents, blog_metadatas = load_parquet_documents(
-            os.path.join(document_path, "blog"), alias_dict, include_timestamp)
+            os.path.join(
+                document_path, "blog"), alias_dict, include_timestamp, name
+        )
     else:
         # assuming all are chat documents
         chat_documents, chat_metadatas = load_parquet_documents(
@@ -74,7 +85,7 @@ def filter_and_chunk(documents, metadatas, chunk_depth, name=None, overlap=0):
     # partition documents by conversation
     unique_conversations = list(set([metadata["conversation"]
                                      for metadata in metadatas]))
-    for conversation in unique_conversations:
+    for conversation in tqdm(unique_conversations):
         conv_ids = [i for i, metadata in enumerate(
             metadatas) if metadata["conversation"] == conversation]
         # get indexes of documents that contain alias
@@ -102,7 +113,7 @@ def filter_and_chunk(documents, metadatas, chunk_depth, name=None, overlap=0):
 
 def format_blog(blog_documents, blog_metadatas, name, include_timestamp):
     formatted_blog = []
-    for doc, meta in zip(blog_documents, blog_metadatas):
+    for doc, meta in tqdm(zip(blog_documents, blog_metadatas), total=len(blog_documents)):
         meta['user_id'] = name
         if include_timestamp:
             if meta['timestamp'] is not None:
@@ -131,7 +142,7 @@ def init_RAGatouille(index_info, name, include_timestamp):
             documents = prep_txt_document(index_info['document_path'])
         elif index_info['document_path'].endswith(".parquet"):
             chat_documents, chat_metadata, blog_documents, blog_metadata = prep_parquet_documents(
-                index_info['document_path'], index_info['alias_dict'], include_timestamp
+                index_info['document_path'], index_info['alias_dict'], include_timestamp, name
             )
             if index_info['overlap'] is None:
                 name = name
@@ -139,9 +150,6 @@ def init_RAGatouille(index_info, name, include_timestamp):
                 name = None
             chat_documents, chat_metadata = filter_and_chunk(
                 chat_documents, chat_metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap'])
-            blog_documents, blog_metadata = format_blog(
-                blog_documents, blog_metadata, name, include_timestamp
-            )
             documents = chat_documents + blog_documents
             metadata = chat_metadata + blog_metadata
         else:
@@ -175,7 +183,8 @@ def init_HuggingFaceEmbedding(index_info, name, include_timestamp):
             documents = prep_txt_document(index_info['document_path'])
         else:
             documents, metadata, blog_documents, blog_metadata = prep_parquet_documents(
-                index_info['document_path'], index_info['alias_dict'], include_timestamp=include_timestamp)
+                index_info['document_path'], index_info['alias_dict'], include_timestamp=include_timestamp, name=name
+            )
             if index_info['overlap'] is None:
                 name = name
             else:
@@ -183,15 +192,13 @@ def init_HuggingFaceEmbedding(index_info, name, include_timestamp):
             chat_documents, chat_metadata = filter_and_chunk(
                 documents, metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap']
             )
-            blog_documents, blog_metadata = format_blog(
-                blog_documents, blog_metadata, name, include_timestamp
-            )
             documents = chat_documents + blog_documents
             metadata = chat_metadata + blog_metadata
         documents = [Document(text=doc) for doc in documents]
         vector_store = FaissVectorStore(faiss_index=faiss_index)
         storage_context = StorageContext.from_defaults(
             vector_store=vector_store)
+        print("Creating index...")
         index = VectorStoreIndex.from_documents(
             documents, storage_context=storage_context
         )
