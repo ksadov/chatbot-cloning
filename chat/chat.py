@@ -36,6 +36,7 @@ def make_completion_query(name, description, conv_history, rag_results):
 
 
 def setup(config_path, model_name, k):
+    print("Setting up chatbot...")
     config = parse_json(config_path)
     rag_module = RAGModule(config, k)
     use_openai = model_name.startswith("gpt")
