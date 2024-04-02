@@ -1,4 +1,5 @@
 .ragatouille
+.llama_index
 extra_data
 extra_configs
 __pycache__
