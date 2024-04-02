@@ -44,10 +44,11 @@ def setup(config_path, model_name, k):
     if use_openai:
         client = init_OpenAI()
         instruct = True
+        model, tokenizer = None, None
     else:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         model, tokenizer, instruct = init_local(model_name, device)
         client = None
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     conv_history = ConvHistory(
         config["include_timestamp"], config["conversation_history_depth"], config["update_index_every"]
     )
