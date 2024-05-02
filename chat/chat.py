@@ -84,7 +84,8 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
             config['name'], config['description'], conv_history, results
         )
         response = make_completion_request(
-            model, tokenizer, prompt, device)
+            model, tokenizer, prompt, device, config['chat_user_name']
+        )
     response_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, response_timestamp, config['name'], response))
