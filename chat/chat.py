@@ -40,6 +40,7 @@ def setup(config_path, model_name, k):
     config = parse_json(config_path)
     rag_module = RAGModule(config, k)
     use_openai = model_name.startswith("gpt")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     with HiddenPrints():
         rag_module.search(query="warmup")
     if use_openai:
@@ -49,7 +50,6 @@ def setup(config_path, model_name, k):
     else:
         model, tokenizer, instruct = init_local(model_name, device)
         client = None
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     conv_history = ConvHistory(
         config["include_timestamp"], config["conversation_history_depth"], config["update_index_every"]
     )
