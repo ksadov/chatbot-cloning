@@ -6,3 +6,5 @@ llama_index
 llama-index-embeddings-huggingface
 llama-index-vector-stores-faiss
 discord.py>=1.5.0
+matplotlib
+anthropic

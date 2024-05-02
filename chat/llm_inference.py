@@ -1,10 +1,16 @@
 
 from openai import OpenAI
+from anthropic import Anthropic
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def init_OpenAI():
     client = OpenAI()
+    return client
+
+
+def init_Anthropic():
+    client = Anthropic()
     return client
 
 
@@ -17,6 +23,15 @@ def make_openai_request(client, system, user, model_name):
         ]
     )
     return completion.choices[0].message.content
+
+
+def make_anthropic_request(client, messages, model):
+    message = client.messages.create(
+        max_tokens=1024,
+        messages=messages,
+        model=model,
+    )
+    return message.content[0].text
 
 
 def init_local(model_name, device):

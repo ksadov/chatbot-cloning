@@ -52,6 +52,7 @@ def get_qa_scores_from_tsv(gt_tsv_file, gen_tsv_dir, embed_model_name, fp16):
     # get all generated responses
     gen_tsv_files = [f for f in os.listdir(gen_tsv_dir) if f.endswith('.tsv')]
     gen_tsv_files.sort()
+    gen_tsv_responses_all = []
     qa_score_dict = {}
     for gen_tsv_file in gen_tsv_files:
         gen_tsv_file = os.path.join(gen_tsv_dir, gen_tsv_file)
@@ -60,15 +61,16 @@ def get_qa_scores_from_tsv(gt_tsv_file, gen_tsv_dir, embed_model_name, fp16):
             gen_tsv_lines = gen_tsv.readlines()
         gen_tsv_lines = [line.strip() for line in gen_tsv_lines][1:]
         gen_tsv_responses = [line.split('\t')[-1] for line in gen_tsv_lines]
+        gen_tsv_responses_all.append(gen_tsv_responses)
         qa_scores = get_qa_scores(
             gt_tsv_responses, gen_tsv_responses, embed_model)
         qa_score_dict[gen_name] = qa_scores
-    return qa_score_dict, gt_tsv_responses, gen_tsv_responses
+    return qa_score_dict, gt_tsv_responses, gen_tsv_responses_all
 
 
-def save_qa_score_dict(response_tsv_1, response_tsv_2, qa_score_dict, embed_model_name, save_dir):
+def save_qa_score_dict(response_tsv_1, response_tsvs, qa_score_dict, embed_model_name, save_dir):
     # save as json of response pairs and qa scores, seperate file per gen file
-    for key in qa_score_dict:
+    for key, response_tsv in zip(qa_score_dict.keys(), response_tsvs):
         json_list = []
         qa_scores = qa_score_dict[key]
         model_fname = embed_model_name.replace('/', '_')
@@ -77,7 +79,7 @@ def save_qa_score_dict(response_tsv_1, response_tsv_2, qa_score_dict, embed_mode
         with open(qa_score_file, 'w') as f:
             for i in range(len(response_tsv_1)):
                 s1 = response_tsv_1[i]
-                s2 = response_tsv_2[i]
+                s2 = response_tsv[i]
                 score = qa_scores[i]
                 json_list.append(
                     {'response_1': s1, 'response_2': s2, 'qa_score': str(score)})
@@ -108,9 +110,13 @@ def main():
     parser.add_argument('--fp16', action='store_true')
     args = parser.parse_args()
 
-    qa_score_dict, gt_tsv_responses, gen_tsv_responses = get_qa_scores_from_tsv(
+    # if save_dir does not exist, create it
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+
+    qa_score_dict, gt_tsv_responses, gen_tsv_responses_all = get_qa_scores_from_tsv(
         args.gt_tsv_file, args.gen_tsv_dir, args.embed_model_name, args.fp16)
-    save_qa_score_dict(gt_tsv_responses, gen_tsv_responses,
+    save_qa_score_dict(gt_tsv_responses, gen_tsv_responses_all,
                        qa_score_dict, args.embed_model_name, args.save_dir)
     plot_qa_scores(qa_score_dict, args.embed_model_name, args.save_dir)
 
