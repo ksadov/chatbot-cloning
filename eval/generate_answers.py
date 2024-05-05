@@ -18,6 +18,8 @@ def make_answer_tsv(gt_tsv_file, config_path, model_name, k, out_dir):
     rag_module, config, use_openai, openai_client, instruct, device, model, \
         tokenizer, conv_history = setup(
             config_path, model_name, k=k)
+    # for eval mode, do not update RAG index
+    config['update_rag_index'] = False
     qa_authors, qa_questions = get_qa_questions(gt_tsv_file)
     qa_responses = []
     for author, question in zip(qa_authors, qa_questions):
