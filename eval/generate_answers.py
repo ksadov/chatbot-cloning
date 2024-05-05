@@ -20,6 +20,8 @@ def make_answer_tsv(gt_tsv_file, config_path, model_name, k, out_dir):
             config_path, model_name, k=k)
     # for eval mode, do not update RAG index
     config['update_rag_index'] = False
+    config['conversation_history_depth'] = 1
+    conv_history.max_length = config['conversation_history_depth']
     qa_authors, qa_questions = get_qa_questions(gt_tsv_file)
     qa_responses = []
     for author, question in zip(qa_authors, qa_questions):
