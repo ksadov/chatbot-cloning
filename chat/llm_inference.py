@@ -34,9 +34,13 @@ def make_anthropic_request(client, messages, model):
     return message.content[0].text
 
 
-def init_local(model_name, device):
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name).half().to(device)
+def init_local(model_name, device, deterministic=False):
+    if deterministic:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, num_beams=1, do_sample=False).half().to(device)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name).half().to(device)
     tokenizer = AutoTokenizer.from_pretrained(
         model_name)
     return model, tokenizer, "Instruct" in model_name
@@ -51,10 +55,10 @@ def make_instruct_request(model, tokenizer, prompt, device):
     return parse_instruct_output(output)
 
 
-def make_completion_request(model, tokenizer, prompt, device, target_name, chat_user_name):
+def make_completion_request(model, tokenizer, prompt, device, target_name, chat_user_name, deterministic=False):
     model_inputs = tokenizer([prompt], return_tensors="pt").to(device)
     generated_ids = model.generate(
-        **model_inputs, max_new_tokens=100, do_sample=True, pad_token_id=tokenizer.eos_token_id)
+        **model_inputs, max_new_tokens=100, do_sample=not deterministic, pad_token_id=tokenizer.eos_token_id)
     output = tokenizer.batch_decode(generated_ids)[0]
     # return output
     return parse_completion_output(output, prompt, target_name, chat_user_name)
