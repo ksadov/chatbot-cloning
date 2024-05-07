@@ -56,7 +56,7 @@ def get_qa_scores_from_tsv(gt_tsv_file, gen_tsv_dir, embed_model_name, fp16):
     qa_score_dict = {}
     for gen_tsv_file in gen_tsv_files:
         gen_tsv_file = os.path.join(gen_tsv_dir, gen_tsv_file)
-        gen_name = os.path.basename(gen_tsv_file).split('.')[0]
+        gen_name = os.path.basename(gen_tsv_file)[:-4]
         with open(gen_tsv_file, 'r') as gen_tsv:
             gen_tsv_lines = gen_tsv.readlines()
         gen_tsv_lines = [line.strip() for line in gen_tsv_lines][1:]
@@ -87,15 +87,39 @@ def save_qa_score_dict(response_tsv_1, response_tsvs, qa_score_dict, embed_model
 
 
 def plot_qa_scores(qa_score_dict, model_name, save_dir):
-    for gen_name, qa_scores in qa_score_dict.items():
+    # average the scores of the score dict items that end with a number
+    prefixes_to_average = set(
+        [key[:-2] for key in qa_score_dict.keys() if key[-1].isdigit() and key[-2] == 'o'])
+    for prefix in prefixes_to_average:
+        qa_score_dict[prefix] = np.mean(
+            [qa_score_dict[key] for key in qa_score_dict.keys() if key.startswith(prefix)], axis=0)
+    # remove the items that end with a number
+    qa_score_dict = {key: value for key,
+                     value in qa_score_dict.items() if not key[-1].isdigit()}
+    # remove trailing underscores from keys
+    # don't plot deterministic models
+    plot_score_dict = {key: value for key,
+                       value in qa_score_dict.items() if not key.endswith('_deterministic')}
+    # plot on one histogram
+    # remove trailing underscore from model name
+    model_name = model_name[:-1] if model_name[-1] == '_' else model_name
+    plt.figure()
+    for gen_name, qa_scores in plot_score_dict.items():
         plt.hist(qa_scores, bins=20, alpha=0.5, label=gen_name)
-    plt.legend(loc='upper right')
-    plt.xlabel('QA Scores')
-    plt.ylabel('Frequency')
-    plt.title('QA Scores Distribution')
-    fname_model = model_name.replace('/', '_')
-    plt.savefig(os.path.join(save_dir, f'qa_scores_{fname_model}.png'))
+    plt.legend()
+    plt.title(f"QA Scores for {model_name}")
+    plt.xlabel("Cosine Similarity")
+    plt.ylabel("Frequency")
+    model_fname = model_name.replace('/', '_')
+    plt.savefig(os.path.join(save_dir, f"qa_scores_{model_fname}.png"))
     plt.close()
+
+    # print mean and SD of each model
+    for gen_name, qa_scores in qa_score_dict.items():
+        print(f"Model: {gen_name}")
+        print(f"Mean: {np.mean(qa_scores)}")
+        print(f"Standard Deviation: {np.std(qa_scores)}")
+        print()
 
 
 def main():
@@ -106,7 +130,7 @@ def main():
                         default="eval/zef/gen", type=str)
     parser.add_argument('--embed_model_name', '-e', type=str, required=True)
     parser.add_argument('--save_dir', '-s',
-                        default="eval/zef/output", type=str)
+                        default="eval/zef/embedding_output", type=str)
     parser.add_argument('--fp16', action='store_true')
     args = parser.parse_args()
 
