@@ -49,7 +49,7 @@ def get_accuracy(client, gt_tsv_questions, gt_tsv_responses, gen_tsv_responses):
     return scored
 
 
-def get_qa_scores_from_tsv(gt_tsv_file, gen_tsv_file):
+def get_qa_scores_from_tsv(gt_tsv_file, gen_tsv_file, manual_eval):
     client = init_Anthropic()
     # get all ground truth responses
     with open(gt_tsv_file, 'r') as gt_tsv:
@@ -60,21 +60,23 @@ def get_qa_scores_from_tsv(gt_tsv_file, gen_tsv_file):
     gt_tsv_questions = [line.split('\t')[-2] for line in gt_tsv_lines]
     gt_tsv_responses = [line.split('\t')[-1] for line in gt_tsv_lines]
     gen_tsv_responses_all = []
-    gen_name = os.path.basename(gen_tsv_file).split('.')[0]
     with open(gen_tsv_file, 'r') as gen_tsv:
         gen_tsv_lines = gen_tsv.readlines()
     gen_tsv_lines = [line.strip() for line in gen_tsv_lines][1:]
     gen_tsv_responses = [line.split('\t')[-1] for line in gen_tsv_lines]
     gen_tsv_responses_all.append(gen_tsv_responses)
-    qa_scores = get_accuracy(
-        client, gt_tsv_questions, gt_tsv_responses, gen_tsv_responses)
+    if manual_eval:
+        qa_scores = [False] * len(gt_tsv_responses)
+    else:
+        qa_scores = get_accuracy(
+            client, gt_tsv_questions, gt_tsv_responses, gen_tsv_responses)
     return qa_scores, gt_tsv_responses, gen_tsv_responses_all
 
 
 def save_accuracies(gen_tsv_file, score_dict, gt_tsv_responses, gen_tsv_responses_all, save_dir):
     # save as json of response pairs and qa scores, seperate file per gen file
     out_fname = "accuracy_" + \
-        os.path.basename(gen_tsv_file).split('.')[0] + '.json'
+        os.path.basename(gen_tsv_file)[:-4] + ".json"
     json_list = []
     qa_scores = score_dict
     qa_score_file = os.path.join(
@@ -96,6 +98,7 @@ def main():
     parser.add_argument('--gen_tsv_file', '-gen', type=str)
     parser.add_argument('--save_dir', '-s',
                         default="eval/zef/output", type=str)
+    parser.add_argument("--manual_eval", "-m", action="store_true")
     args = parser.parse_args()
 
     # if save_dir does not exist, create it
@@ -103,8 +106,9 @@ def main():
         os.makedirs(args.save_dir)
 
     score_dict, gt_tsv_responses, gen_tsv_responses_all = get_qa_scores_from_tsv(
-        args.gt_tsv_file, args.gen_tsv_file)
-    save_accuracies(score_dict, gt_tsv_responses,
+        args.gt_tsv_file, args.gen_tsv_file, args.manual_eval
+    )
+    save_accuracies(args.gen_tsv_file, score_dict, gt_tsv_responses,
                     gen_tsv_responses_all, args.save_dir)
 
 
