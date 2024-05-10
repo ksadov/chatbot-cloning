@@ -92,11 +92,14 @@ def plot_qa_scores(qa_score_dict, model_name, save_dir):
         [key[:-2] for key in qa_score_dict.keys() if key[-1].isdigit() and key[-2] == 'o'])
     for prefix in prefixes_to_average:
         qa_score_dict[prefix] = np.mean(
-            [qa_score_dict[key] for key in qa_score_dict.keys() if key.startswith(prefix)], axis=0)
+            [qa_score_dict[key] for key in qa_score_dict.keys() if (key.startswith(prefix) and
+                                                                    not "deterministic" in key)], axis=0)
     # remove the items that end with a number
     qa_score_dict = {key: value for key,
                      value in qa_score_dict.items() if not key[-1].isdigit()}
     # remove trailing underscores from keys
+    qa_score_dict = {key[:-1] if key[-1] == '_' else key: value for key,
+                     value in qa_score_dict.items()}
     # don't plot deterministic models
     plot_score_dict = {key: value for key,
                        value in qa_score_dict.items() if not key.endswith('_deterministic')}
@@ -130,7 +133,7 @@ def main():
                         default="eval/zef/gen", type=str)
     parser.add_argument('--embed_model_name', '-e', type=str, required=True)
     parser.add_argument('--save_dir', '-s',
-                        default="eval/zef/embedding_output", type=str)
+                        default="eval/zef/style_embedding_output", type=str)
     parser.add_argument('--fp16', action='store_true')
     args = parser.parse_args()
 
