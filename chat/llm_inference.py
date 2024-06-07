@@ -19,9 +19,13 @@ def make_openai_request(client, system, user, model_name):
     return completion.choices[0].message.content
 
 
-def init_local(model_name, device):
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name).half().to(device)
+def init_local(model_name, device, half=False):
+    if half:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, trust_remote_code=True).half().to(device)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, trust_remote_code=True).to(device)
     tokenizer = AutoTokenizer.from_pretrained(
         model_name)
     return model, tokenizer, "Instruct" in model_name

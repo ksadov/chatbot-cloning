@@ -37,6 +37,7 @@ def make_completion_query(name, description, conv_history, rag_results):
 
 def setup(config_path, model_name, k):
     print("Setting up chatbot...")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     config = parse_json(config_path)
     rag_module = RAGModule(config, k)
     use_openai = model_name.startswith("gpt")
@@ -49,7 +50,6 @@ def setup(config_path, model_name, k):
     else:
         model, tokenizer, instruct = init_local(model_name, device)
         client = None
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     conv_history = ConvHistory(
         config["include_timestamp"], config["conversation_history_depth"], config["update_index_every"]
     )
