@@ -6,3 +6,7 @@ __pycache__
 venv
 discord/configs/*.json
 !discord/configs/example.json
+zef_specific_code/
+eval/zef
+data/
+notes.txt
