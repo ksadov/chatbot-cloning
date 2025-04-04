@@ -1,8 +1,10 @@
 torch==2.2.0
-RAGatouille
-openai
-transformers
+RAGatouille==0.0.6rc2
+openai==1.12.0
+transformers==4.37.2
 llama_index
 llama-index-embeddings-huggingface
 llama-index-vector-stores-faiss
 discord.py>=1.5.0
+matplotlib
+anthropic

@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import torch
+from datetime import datetime as dt
 
 from chat.llm_inference import init_OpenAI, make_openai_request, init_local, make_instruct_request, \
     make_completion_request
@@ -28,10 +29,14 @@ def make_instruct_query(name, description, conv_history, rag_results):
     return system, user
 
 
-def make_completion_query(name, description, conv_history, rag_results):
+def make_completion_query(name, description, conv_history, rag_results, include_timestamp):
     context_string = make_context_string(rag_results)
+    if include_timestamp:
+        timestamp_str = f"[{dt.now().strftime('%Y-%m-%d %H:%M')}] "
+    else:
+        timestamp_str = ""
     prompt_str = f"Character sheet:\n\n{name}: {description}.\n\nExamples of {name}'s writing:{context_string}\n\n" \
-                 f"Conversation history:\n\n{conv_history}\n{name}:"
+                 f"Conversation history:\n\n{conv_history}\n{timestamp_str}{name}:"
     return prompt_str
 
 
@@ -41,6 +46,7 @@ def setup(config_path, model_name, k):
     config = parse_json(config_path)
     rag_module = RAGModule(config, k)
     use_openai = model_name.startswith("gpt")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     with HiddenPrints():
         rag_module.search(query="warmup")
     if use_openai:
@@ -83,10 +89,11 @@ def make_response(config, query, speaker, conv_history, instruct, rag_module, us
             )
     else:
         prompt = make_completion_query(
-            config['name'], config['description'], conv_history, results
+            config['name'], config['description'], conv_history, results, config['include_timestamp']
         )
         response = make_completion_request(
-            model, tokenizer, prompt, device)
+            model, tokenizer, prompt, device, config['name'], config['chat_user_name']
+        )
     response_timestamp = datetime.datetime.now()
     conv_history.add(
         Message(conversation_name, response_timestamp, config['name'], response))

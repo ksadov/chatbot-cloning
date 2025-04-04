@@ -11,7 +11,7 @@
     "chunk_depth": 5,
     "overlap": null
   },
-  "include_timestamp": true,
+  "include_timestamp": false,
   "query_context_depth": 3,
   "conversation_history_depth": 5,
   "update_index_every": 5,

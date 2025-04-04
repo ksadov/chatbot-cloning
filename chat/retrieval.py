@@ -47,10 +47,15 @@ def load_parquet_documents(document_path, alias_dict, include_timestamp, name):
             metadata['user_id'] = alias_dict[str(metadata['user_id'])]
         if include_timestamp:
             timestamp = pd.to_datetime(
-                metadata['timestamp']).strftime('%Y-%m-%d %H:%M')
-            # check if timestamp is before 2000
-            if timestamp.split("-")[0] < "2000":
+                metadata['timestamp'])
+            # if year is equal to 1970, convert from unix timestamp
+            if timestamp.year == 1970:
+                timestamp = pd.to_datetime(
+                    metadata['timestamp'], unit='ms').strftime('%Y-%m-%d %H:%M')
+            elif timestamp.year < 2000:
                 timestamp = f"Unknown Timestamp"
+            else:
+                timestamp = timestamp.strftime('%Y-%m-%d %H:%M')
             timestamp_prefix = f"[{timestamp}]"
         else:
             timestamp_prefix = ""
@@ -194,7 +199,22 @@ def init_HuggingFaceEmbedding(index_info, name, include_timestamp):
             )
             documents = chat_documents + blog_documents
             metadata = chat_metadata + blog_metadata
+            # convert timestamps to string
+            for i, meta in enumerate(metadata):
+                # if meta is not a list, convert to list
+                if not isinstance(meta, list):
+                    meta = [meta]
+                    metadata[i] = meta
+                for m in meta:
+                    # if timestamp is not a string, convert to string
+                    if m['timestamp'] is not None and not isinstance(m['timestamp'], str):
+                        m['timestamp'] = m['timestamp'].strftime(
+                            '%Y-%m-%d %H:%M')
         documents = [Document(text=doc) for doc in documents]
+        # assign metadata to documents
+        for i, doc in enumerate(documents):
+            doc.metadata = {"meta_list": metadata[i]}
+            print("META: ", doc.metadata)
         vector_store = FaissVectorStore(faiss_index=faiss_index)
         storage_context = StorageContext.from_defaults(
             vector_store=vector_store)
