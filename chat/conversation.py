@@ -2,7 +2,7 @@ import pyarrow as pa
 import pandas as pd
 
 
-class Message():
+class Message:
     def __init__(self, conversation, timestamp, user_id, content):
         self.conversation = conversation
         self.timestamp = timestamp
@@ -11,10 +11,10 @@ class Message():
 
     def to_pandas(self):
         dframe_dict = {
-            'conversation': self.conversation,
-            'user_id': self.user_id,
-            'timestamp': self.timestamp,
-            'content': self.content,
+            "conversation": self.conversation,
+            "user_id": self.user_id,
+            "timestamp": self.timestamp,
+            "content": self.content,
         }
         dataframe = pd.DataFrame([dframe_dict])
         return dataframe
@@ -26,9 +26,7 @@ class Message():
             raise
 
     def __str__(self):
-        return (
-            f"Message(conversation={self.conversation}, user_id={self.user_id}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M')}, content={self.content})"
-        )
+        return f"Message(conversation={self.conversation}, user_id={self.user_id}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M')}, content={self.content})"
 
 
 class ConvHistory:
@@ -55,9 +53,19 @@ class ConvHistory:
 
     def str_of_depth(self, depth):
         if self.include_timestamp:
-            return "\n".join([f"[{message.timestamp.strftime('%Y-%m-%d %H:%M')}] {message.user_id}: {message.content}" for message in self.history[-depth:]])
+            return "\n".join(
+                [
+                    f"[{message.timestamp.strftime('%Y-%m-%d %H:%M')}] {message.user_id}: {message.content}"
+                    for message in self.history[-depth:]
+                ]
+            )
         else:
-            return "\n".join([f"{message.user_id}: {message.content}" for message in self.history[-depth:]])
+            return "\n".join(
+                [
+                    f"{message.user_id}: {message.content}"
+                    for message in self.history[-depth:]
+                ]
+            )
 
     def __str__(self):
         return self.str_of_depth(len(self.history))

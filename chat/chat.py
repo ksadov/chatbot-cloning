@@ -2,12 +2,12 @@ import argparse
 import datetime
 import torch
 import json
+import requests
 from datetime import datetime as dt
 
 from chat.llm_inference import LLM
 from chat.utils import HiddenPrints, parse_json
 from chat.conversation import ConvHistory, Message
-from chat.retrieval import RAGModule, RetrievalError
 
 # silence annoying ragatouille logging
 import logging
@@ -15,16 +15,35 @@ import logging
 logging.getLogger("ragatouille").setLevel(logging.CRITICAL)
 
 
+class RagModule:
+    def __init__(self, vector_store_endpoint):
+        self.vector_store_endpoint = vector_store_endpoint
+
+    def search(self, query):
+        response = requests.post(
+            f"{self.vector_store_endpoint}/api/search",
+            json={"query": query, "n_results": 5},
+        )
+        response.raise_for_status()
+        response_texts = [result["text"] for result in response.json()["results"]]
+        return response_texts
+
+    def update(self, query):
+        response = requests.post(
+            f"{self.vector_store_endpoint}/api/update",
+            json={"query": query},
+        )
+        response.raise_for_status()
+
+
 class ChatController:
     def __init__(self, bot_config_path, llm_config_path, k):
         print("Setting up chatbot...")
         self.config = json.load(open(bot_config_path))
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.rag_module = RAGModule(self.config, k)
+        self.rag_module = RagModule(self.config["vector_store_endpoint"])
         self.llm_config = json.load(open(llm_config_path))
         self.llm = LLM(self.llm_config, self.device)
-        with HiddenPrints():
-            self.rag_module.search(query="warmup")
         self.conv_history = ConvHistory(
             self.config["include_timestamp"],
             self.config["conversation_history_depth"],
@@ -42,7 +61,7 @@ class ChatController:
             full_query = self.conv_history.str_of_depth(
                 self.config["query_context_depth"]
             )
-            results = self.rag_module.search(query=full_query)
+            results = self.rag_module.search(full_query)
         except RetrievalError as e:
             results = []
             print(f"Error retrieving documents: {e}")
