@@ -1,4 +1,6 @@
 from transformers import pipeline, AutoTokenizer
+from datetime import datetime as dt
+import requests
 import json
 
 def make_context_string(rag_results):
@@ -36,8 +38,8 @@ class LLM:
     def chat_step(self, name, chat_user_name, description, conv_history, rag_results, include_timestamp):
         if self.instruct:
             system, user = make_instruct_query(name, description, conv_history, rag_results)
-            prompt = f"[INST]{system}[/INST]{user}"
-            response = self.make_instruct_request(prompt)
+            prompt = {"system": system, "user": user}
+            response = self.make_instruct_request(system, user)
         else:
             prompt = make_completion_query(name, chat_user_name, description, conv_history, rag_results, include_timestamp)
             response = self.make_completion_request(prompt, name, "friend", deterministic=False)
@@ -68,7 +70,7 @@ class LocalLLM(LLM):
         return parse_completion_output(output, prompt, target_name, chat_user_name)
 
 class RemoteLLM(LLM):
-    def __init__(self, confi, device):
+    def __init__(self, config, device):
         super().__init__(config, device)
         self.api_base = self.config["api_base"]
         self.api_key = self.config["api_key"]

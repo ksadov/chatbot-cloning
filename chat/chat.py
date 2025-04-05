@@ -47,7 +47,7 @@ class ChatController:
             Message(conversation_name, response_timestamp, speaker, response))
         if self.config['update_rag_index']:
             self.conv_history.update_rag_index(self.rag_module)
-        return query, response
+        return prompt, response
 
 
 def chat_loop(bot_config_path, llm_config_path, show_prompt, k):
@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--bot_config_path', '-b', type=str,
                         help='Path to the config file', default='configs/bot/zef.json')
     parser.add_argument('--llm_config_path', '-l', type=str,
-                        help='Path to the model config file', default='configs/llm/Mistral.json')
+                        help='Path to the model config file', default='configs/llm/gpt-4o-mini.json')
     parser.add_argument("--k", default=3, type=int,)
     args = parser.parse_args()
     chat_loop(args.bot_config_path, args.llm_config_path, args.show_prompt, args.k)
