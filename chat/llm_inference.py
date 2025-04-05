@@ -74,6 +74,7 @@ class RemoteLLM(LLM):
         super().__init__(config, device)
         self.api_base = self.config["api_base"]
         self.api_key = self.config["api_key"]
+        self.prompt_params = self.config["prompt_params"]
         self.model = self.config["model"]
 
     def make_instruct_request(self, system, user):
@@ -81,7 +82,7 @@ class RemoteLLM(LLM):
         response = requests.post(
             self.api_base,
             headers={"Authorization": f"Bearer {self.api_key}"},
-            json={"model": self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]},
+            json={"model": self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], **self.prompt_params},
         )
         return response.json()["choices"][0]["message"]["content"]
 
@@ -90,7 +91,7 @@ class RemoteLLM(LLM):
         response = requests.post(
             self.api_base,
             headers={"Authorization": f"Bearer {self.api_key}"},
-            json={"model": self.model, "prompt": prompt},
+            json={"model": self.model, "prompt": prompt, **self.prompt_params},
         )
         raw_response = response.json()["choices"][0]["text"]
         return parse_completion_output(raw_response, prompt, name, chat_user_name)
