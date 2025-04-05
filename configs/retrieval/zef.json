@@ -1,8 +1,8 @@
 {
   "store_type": "local",
-  "index_path": ".vector_store/zef_te3small",
-  "embedding_config_path": "configs/embedding/text-embedding-3-small.json",
-  "vector_dimension": 512,
+  "index_path": ".vector_store/zef_bge",
+  "embedding_config_path": "configs/embedding/bge-large-en-v1.5.json",
+  "vector_dimension": 1024,
   "document_path": "data/zef.txt",
   "allow_update": false,
   "n_results": 5

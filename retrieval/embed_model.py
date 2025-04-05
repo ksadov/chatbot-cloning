@@ -29,7 +29,6 @@ class RemoteEmbeddingModel(BaseEmbedding):
             headers={"Authorization": f"Bearer {self.api_key}"},
             json={"model": self.model_name, "input": text, **self.params},
         )
-        print("Response: ", response.json())
         response.raise_for_status()
         return response.json()["data"][0]["embedding"]
 
