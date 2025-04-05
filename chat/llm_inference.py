@@ -62,12 +62,12 @@ class LocalLLM(LLM):
     def make_instruct_request(self, system, user):
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         output = self.pipe(messages)
-        return parse_instruct_output(output)
+        return cleanup_output(output, system, user)
 
 
     def make_completion_request(self, prompt, target_name, chat_user_name):
         output = self.pipe(prompt)[0]['generated_text']
-        return parse_completion_output(output, prompt, target_name, chat_user_name)
+        return cleanup_output(output, prompt, target_name, chat_user_name)
 
 class RemoteLLM(LLM):
     def __init__(self, config, device):
@@ -94,7 +94,7 @@ class RemoteLLM(LLM):
             json={"model": self.model, "prompt": prompt, **self.prompt_params},
         )
         raw_response = response.json()["choices"][0]["text"]
-        return parse_completion_output(raw_response, prompt, name, chat_user_name)
+        return cleanup_output(raw_response, name, chat_user_name)
 
 
 def setup_llm(config_path, device):
@@ -125,19 +125,4 @@ def cleanup_output(output, target_name, chat_user_name):
     output_trimmed = output_trimmed.replace("</s>", "")
     # trim whitespace again
     output_trimmed = output_trimmed.strip()
-    return output_trimmed
-
-
-def parse_completion_output(output, prompt, target_name, chat_user_name):
-    # trim prompt off of front of output
-    output = output[len(prompt):]
-    output_trimmed = cleanup_output(output, target_name, chat_user_name)
-    # return output_trimmed
-    return output_trimmed
-
-
-def parse_instruct_output(output):
-    # trim everything before [/INST]
-    output_trimmed = output.split("[/INST]")[1]
-    output_trimmed = cleanup_output(output_trimmed)
     return output_trimmed

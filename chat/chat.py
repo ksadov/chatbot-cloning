@@ -44,7 +44,7 @@ class ChatController:
         )
         response_timestamp = datetime.datetime.now()
         self.conv_history.add(
-            Message(conversation_name, response_timestamp, speaker, response))
+            Message(conversation_name, response_timestamp, self.config['name'], response))
         if self.config['update_rag_index']:
             self.conv_history.update_rag_index(self.rag_module)
         return prompt, response
