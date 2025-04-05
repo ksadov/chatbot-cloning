@@ -1,5 +1,4 @@
 torch
-RAGatouille
 transformers
 llama_index
 llama-index-embeddings-huggingface
