@@ -47,26 +47,13 @@ def make_completion_query(
     return prompt_str
 
 
-def cleanup_output(output: str, target_name: str, chat_user_name: str) -> str:
+def cleanup_output(output: str, target_name: str, chat_user_name: str) -> list[str]:
     # trim everything after the first instance of responder name, if there is one
     output_trimmed = output.split(chat_user_name)[0]
+    # sometimes output is multiple messages, split by newlines with the prefix target_name
+    output_trimmed = output_trimmed.split(f"{target_name}:")
     # trim whitespace in front and back
-    output_trimmed = output_trimmed.strip()
-    # split by newline, take first line
-    output_trimmed = output_trimmed.split("\n")[0]
-    # trim before first :, if there is one
-    colon = output_trimmed.find(f"{target_name}:") + len(target_name) + 1
-    if colon != -1:
-        output_trimmed = output_trimmed[colon + 1 :]
-    # trim anything after the last period, unless there are no periods
-    periods = [i for i, c in enumerate(output_trimmed) if c == "."]
-    if len(periods) > 0:
-        output_trimmed = output_trimmed[: periods[-1] + 1]
-    # get rid of <s> and </s>
-    output_trimmed = output_trimmed.replace("<s>", "")
-    output_trimmed = output_trimmed.replace("</s>", "")
-    # trim whitespace again
-    output_trimmed = output_trimmed.strip()
+    output_trimmed = [message.strip() for message in output_trimmed]
     return output_trimmed
 
 
@@ -89,13 +76,15 @@ class LLM:
         conv_history: str,
         rag_results: List[str],
         include_timestamp: bool,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, List[str]]:
         if self.instruct:
             system, user = make_instruct_query(
                 name, description, conv_history, rag_results
             )
             prompt = {"system": system, "user": user}
             response = self.make_instruct_request(system, user)
+            # todo, handle multiple messages better when I get a good scaffold figured out
+            responses = [response]
         else:
             prompt = make_completion_query(
                 name,
@@ -105,8 +94,9 @@ class LLM:
                 rag_results,
                 include_timestamp,
             )
-            response = self.make_completion_request(prompt, name, chat_user_name)
-        return prompt, response
+            raw_response = self.make_completion_request(prompt, name, chat_user_name)
+            responses = cleanup_output(raw_response, name, chat_user_name)
+        return prompt, responses
 
     def make_instruct_request(self, system: str, user: str) -> str:
         # use chat completion api: https://platform.openai.com/docs/api-reference/chat
@@ -134,4 +124,4 @@ class LLM:
             json={"model": self.model, "prompt": prompt, **self.prompt_params},
         )
         raw_response = response.json()["choices"][0]["text"]
-        return cleanup_output(raw_response, name, chat_user_name)
+        return raw_response

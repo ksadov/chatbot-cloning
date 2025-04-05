@@ -65,7 +65,7 @@ class ChatController:
         except RetrievalError as e:
             results = []
             print(f"Error retrieving documents: {e}")
-        prompt, response = self.llm.chat_step(
+        prompt, responses = self.llm.chat_step(
             self.config["name"],
             speaker,
             self.config["description"],
@@ -73,15 +73,20 @@ class ChatController:
             results,
             self.config["include_timestamp"],
         )
-        response_timestamp = datetime.datetime.now()
-        self.conv_history.add(
-            Message(
-                conversation_name, response_timestamp, self.config["name"], response
+        # stagger response timestamps by 1 second
+        response_timestamps = [
+            query_timestamp + datetime.timedelta(seconds=i)
+            for i in range(len(responses))
+        ]
+        for response, response_timestamp in zip(responses, response_timestamps):
+            self.conv_history.add(
+                Message(
+                    conversation_name, response_timestamp, self.config["name"], response
+                )
             )
-        )
         if self.config["update_rag_index"]:
             self.conv_history.update_rag_index(self.rag_module)
-        return prompt, response
+        return prompt, responses
 
 
 def chat_loop(bot_config_path, llm_config_path, show_prompt, k):
@@ -90,13 +95,14 @@ def chat_loop(bot_config_path, llm_config_path, show_prompt, k):
         query = input("> ")
         if query == "exit":
             break
-        prompt, response = controller.make_response(query, "user", "conversation_name")
+        prompt, responses = controller.make_response(query, "user", "conversation_name")
         if show_prompt:
             print("------------------")
             print("PROMPT:")
             print(prompt)
             print("------------------")
-        print(response)
+        for response in responses:
+            print(response)
 
 
 def main():
