@@ -27,9 +27,7 @@ class EmbeddingStoreFactory:
         if store_type == "local":
             return LocalEmbeddingStore(
                 index_path=Path(config.get("index_path", ".vector_store/index")),
-                embedding_model_name=config.get(
-                    "embedding_model_name", "BAAI/bge-large-en-v1.5"
-                ),
+                embedding_config_path=Path(config.get("embedding_config_path")),
                 vector_dimension=config.get("vector_dimension", 1024),
                 document_path=(
                     Path(config.get("document_path"))

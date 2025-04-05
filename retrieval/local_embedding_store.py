@@ -1,19 +1,20 @@
 import os
+import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.vector_stores.faiss import FaissVectorStore
 from llama_index.core import (
     Document,
-    Settings,
     load_index_from_storage,
     VectorStoreIndex,
     StorageContext,
+    Settings,
 )
 import faiss
 
 from retrieval.embedding_core import EmbeddingStore, RetrievalError
+from retrieval.embed_model import make_embed_model
 
 
 class LocalEmbeddingStore(EmbeddingStore):
@@ -22,7 +23,7 @@ class LocalEmbeddingStore(EmbeddingStore):
     def __init__(
         self,
         index_path: Path,
-        embedding_model_name: str,
+        embedding_config_path: Path,
         vector_dimension: int,
         document_path: Optional[Path] = None,
         allow_update: bool = True,
@@ -33,26 +34,24 @@ class LocalEmbeddingStore(EmbeddingStore):
 
         Args:
             index_path: Path to store the FAISS index
-            embedding_model_name: HuggingFace model name for embeddings
+            embedding_config_path: Path to the embedding config
             vector_dimension: Dimension of the embedding vectors
             document_path: Path to the document to index (if creating a new index)
             allow_update: Whether to allow adding new documents
             n_results: Default number of results to return from search
         """
         self.index_path = index_path
-        self.embedding_model_name = embedding_model_name
         self.vector_dimension = vector_dimension
         self.document_path = document_path
         self.allow_update = allow_update
         self.default_n_results = n_results
-
+        self.embed_model = make_embed_model(embedding_config_path)
+        Settings.embed_model = self.embed_model
         self.rag_index = self._init_embedding_index()
         self.rag_module = self.rag_index.as_retriever(similarity_top_k=n_results)
 
     def _init_embedding_index(self) -> VectorStoreIndex:
         """Initialize or load the FAISS index."""
-        embed_model = HuggingFaceEmbedding(model_name=self.embedding_model_name)
-        Settings.embed_model = embed_model
 
         if os.path.exists(self.index_path):
             print(f"Loading index from {self.index_path}")
@@ -60,9 +59,7 @@ class LocalEmbeddingStore(EmbeddingStore):
             storage_context = StorageContext.from_defaults(
                 vector_store=vector_store, persist_dir=self.index_path
             )
-            index = load_index_from_storage(
-                storage_context=storage_context, embed_model=embed_model
-            )
+            index = load_index_from_storage(storage_context=storage_context)
             return index
         else:
             if not self.document_path:

@@ -1,8 +1,8 @@
 {
   "store_type": "local",
-  "index_path": ".vector_store/zef",
-  "embedding_model_name": "BAAI/bge-large-en-v1.5",
-  "vector_dimension": 1024,
+  "index_path": ".vector_store/zef_te3small",
+  "embedding_config_path": "configs/embedding/text-embedding-3-small.json",
+  "vector_dimension": 512,
   "document_path": "data/zef.txt",
   "allow_update": false,
   "n_results": 5

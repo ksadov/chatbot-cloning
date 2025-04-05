@@ -14,3 +14,4 @@ notes.txt
 configs/llm/*
 configs/discord/*
 configs/bot/example.json
+configs/embedding/*
