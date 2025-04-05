@@ -1,5 +1,6 @@
 .ragatouille
 .llama_index
+.vector_store
 extra_data
 extra_configs
 __pycache__
