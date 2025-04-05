@@ -1,67 +1,104 @@
+from transformers import pipeline, AutoTokenizer
+import json
 
-from openai import OpenAI
-from anthropic import Anthropic
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
-
-def init_OpenAI():
-    client = OpenAI()
-    return client
-
-
-def init_Anthropic():
-    client = Anthropic()
-    return client
+def make_context_string(rag_results):
+    context_string = ""
+    for result in rag_results:
+        context_string += f"\n\n- {result}"
+    return context_string
 
 
-def make_openai_request(client, system, user, model_name):
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user}
-        ]
-    )
-    return completion.choices[0].message.content
+def make_instruct_query(name, description, conv_history, rag_results):
+    context_string = make_context_string(rag_results)
+    system = f"You are playing the role of {name}, {description}."
+    user = f"You are chatting online. Write your next response in the conversation, based on the following excerpts" \
+           f"from {name}'s writing:{context_string}\n\nConversation history:\n\n{conv_history}\n{name}:"
+    return system, user
 
 
-def make_anthropic_request(client, messages, model):
-    message = client.messages.create(
-        max_tokens=1024,
-        messages=messages,
-        model=model,
-    )
-    return message.content[0].text
-
-
-def init_local(model_name, device, deterministic=False):
-    if deterministic:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, num_beams=1, do_sample=False).half().to(device)
+def make_completion_query(name, chat_user_name, description, conv_history, rag_results, include_timestamp):
+    context_string = make_context_string(rag_results)
+    if include_timestamp:
+        timestamp_str = f"[{dt.now().strftime('%Y-%m-%d %H:%M')}] "
     else:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name).half().to(device)
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name)
-    return model, tokenizer, "Instruct" in model_name
+        timestamp_str = ""
+    prompt_str = f"Character sheet:\n\n{name}: {description}.\n\nExamples of {name}'s writing:{context_string}\n\n" \
+                 f"Conversation history:\n\n{conv_history}\n{timestamp_str}{name}:"
+    return prompt_str
+
+class LLM:
+    def __init__(self, config, device):
+        self.config = config
+        self.model_name = self.config["model"]
+        self.device = device
+        self.instruct = self.config["instruct"]
+
+    def chat_step(self, name, chat_user_name, description, conv_history, rag_results, include_timestamp):
+        if self.instruct:
+            system, user = make_instruct_query(name, description, conv_history, rag_results)
+            prompt = f"[INST]{system}[/INST]{user}"
+            response = self.make_instruct_request(prompt)
+        else:
+            prompt = make_completion_query(name, chat_user_name, description, conv_history, rag_results, include_timestamp)
+            response = self.make_completion_request(prompt, name, "friend", deterministic=False)
+        return prompt, response
 
 
-def make_instruct_request(model, tokenizer, prompt, device):
-    prompt = f"[INST]{prompt}[/INST]"
-    model_inputs = tokenizer([prompt], return_tensors="pt").to(device)
-    generated_ids = model.generate(
-        **model_inputs, max_new_tokens=100, do_sample=True, pad_token_id=tokenizer.eos_token_id)
-    output = tokenizer.batch_decode(generated_ids)[0]
-    return parse_instruct_output(output)
+    def make_instruct_request(self, prompt):
+        pass
+
+    def make_completion_request(self, prompt):
+        pass
+
+class LocalLLM(LLM):
+    def __init__(self, config, device):
+        super().__init__(config, device)
+        self.pipe = pipeline("text-generation", model=self.model_name, device=device, trust_remote_code=True, torch_dtype='float16')
+        self.instruct = config["instruct"]
 
 
-def make_completion_request(model, tokenizer, prompt, device, target_name, chat_user_name, deterministic=False):
-    model_inputs = tokenizer([prompt], return_tensors="pt").to(device)
-    generated_ids = model.generate(
-        **model_inputs, max_new_tokens=100, do_sample=not deterministic, pad_token_id=tokenizer.eos_token_id)
-    output = tokenizer.batch_decode(generated_ids)[0]
-    # return output
-    return parse_completion_output(output, prompt, target_name, chat_user_name)
+    def make_instruct_request(self, system, user):
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        output = self.pipe(messages)
+        return parse_instruct_output(output)
+
+
+    def make_completion_request(self, prompt, target_name, chat_user_name, deterministic=False):
+        output = self.pipe(prompt)[0]['generated_text']
+        return parse_completion_output(output, prompt, target_name, chat_user_name)
+
+class RemoteLLM(LLM):
+    def __init__(self, confi, device):
+        super().__init__(config, device)
+        self.api_base = self.config["api_base"]
+        self.api_key = self.config["api_key"]
+        self.model = self.config["model"]
+
+    def make_instruct_request(self, system, user):
+        # use chat completion api
+        response = requests.post(
+            self.api_base,
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"model": self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]},
+        )
+        return response.json()["choices"][0]["message"]["content"]
+
+    def make_completion_request(self, prompt):
+        # use completion api
+        response = requests.post(
+            self.api_base,
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"model": self.model, "prompt": prompt},
+        )
+        return response.json()["choices"][0]["text"]
+
+
+def setup_llm(config_path, device):
+    config = json.load(open(config_path))
+    if config["api_base"] is not None:
+        return RemoteLLM(config, device)
+    else:
+        return LocalLLM(config, device)
 
 
 def cleanup_output(output, target_name, chat_user_name):

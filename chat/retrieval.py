@@ -1,7 +1,6 @@
 import os
 from tqdm import tqdm
 
-from ragatouille import RAGPretrainedModel
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.vector_stores.faiss import FaissVectorStore
 from llama_index.core import (
@@ -136,41 +135,6 @@ def format_blog(blog_documents, blog_metadatas, name, include_timestamp):
     return formatted_blog, blog_metadatas
 
 
-def init_RAGatouille(index_info, name, include_timestamp):
-    print("Initializing RAG...")
-    index_name = index_info['index_name']
-    rag_fname = f".ragatouille/colbert/indexes/{index_name}"
-    if not os.path.exists(rag_fname):
-        print(
-            f"Creating index at {rag_fname} from {index_info['document_path']}")
-        if index_info['document_path'].endswith(".txt"):
-            documents = prep_txt_document(index_info['document_path'])
-        elif index_info['document_path'].endswith(".parquet"):
-            chat_documents, chat_metadata, blog_documents, blog_metadata = prep_parquet_documents(
-                index_info['document_path'], index_info['alias_dict'], include_timestamp, name
-            )
-            if index_info['overlap'] is None:
-                name = name
-            else:
-                name = None
-            chat_documents, chat_metadata = filter_and_chunk(
-                chat_documents, chat_metadata, index_info['chunk_depth'], name=name, overlap=index_info['overlap'])
-            documents = chat_documents + blog_documents
-            metadata = chat_metadata + blog_metadata
-        else:
-            raise ValueError("Document path must end with .txt or .parquet")
-        RAG = RAGPretrainedModel.from_pretrained("colbert-ir/colbertv2.0")
-        RAG.index(
-            collection=documents,
-            metadata=metadata,
-            index_name=index_name,
-            max_document_length=180,
-            split_documents=True
-        )
-    RAG = RAGPretrainedModel.from_index(rag_fname)
-    return RAG, rag_fname
-
-
 def init_HuggingFaceEmbedding(index_info, name, include_timestamp):
     print("Initializing HuggingFaceEmbedding...")
     model_name = index_info['model_name']
@@ -235,16 +199,13 @@ def init_HuggingFaceEmbedding(index_info, name, include_timestamp):
 class RAGModule:
     def __init__(self, config, k):
         self.config = config
+        print("CONFIG: ", self.config)
         self.k = k
         self.index_info = config['index_info']
         self.include_timestamp = config['include_timestamp']
-        if self.index_info['type'] == "RAGatouille":
-            self.rag_module, self.rag_fname = init_RAGatouille(
-                self.index_info, config['name'], self.include_timestamp)
-        elif self.index_info['type'] == "HuggingFaceEmbedding":
-            self.rag_index, self.rag_fname = init_HuggingFaceEmbedding(
-                self.index_info, config['name'], self.include_timestamp)
-            self.rag_module = self.rag_index.as_retriever(similarity_top_k=k)
+        self.rag_index, self.rag_fname = init_HuggingFaceEmbedding(
+            self.index_info, config['name'], self.include_timestamp)
+        self.rag_module = self.rag_index.as_retriever(similarity_top_k=k)
 
     def search(self, query):
         if self.index_info['type'] == "RAGatouille":

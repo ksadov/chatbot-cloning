@@ -10,7 +10,7 @@ intents.message_content = True
 
 
 class ChatBot(discord.Client):
-    def __init__(self, config_path, discord_config, model_name):
+    def __init__(self, config_path, discord_config_path, model_config_path):
         super().__init__(intents=intents)
         self.rag_module, self.config, self.use_openai, self.openai_client, self.instruct, self.device, self.model, \
             self.tokenizer, self.conv_history = setup(
@@ -43,17 +43,17 @@ class ChatBot(discord.Client):
 def main():
     # get discord token from environment
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config_path', '-c', type=str,
-                        help='Path to the config file', default='configs/zef.json')
+    parser.add_argument('--bot_config_path', '-b', type=str,
+                        help='Path to the config file', default='configs/bot/zef.json')
     parser.add_argument('--discord_config_path', '-d', type=str,
-                        help='Path to the discord config file', default='discord/configs/zef.json')
-    parser.add_argument('--model_name', '-m', type=str,
-                        help='Name of the model to use', default='mistralai/Mistral-7B-v0.1')
+                        help='Path to the discord config file', default='configs/discord/zef.json')
+    parser.add_argument('--llm_config_path', '-l', type=str,
+                        help='Path to the model config file', default='configs/llm/Mistal-7B-v01.json')
     args = parser.parse_args()
     discord_config = parse_json(args.discord_config_path)
-    chatbot = ChatBot(args.config_path,
+    chatbot = ChatBot(args.bot_config_path,
                       discord_config,
-                      args.model_name)
+                      args.model_config)
     chatbot.run(discord_config['token'])
 
 

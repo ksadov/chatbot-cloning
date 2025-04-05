@@ -1,10 +1,10 @@
 import argparse
 import datetime
 import torch
+import json
 from datetime import datetime as dt
 
-from chat.llm_inference import init_OpenAI, make_openai_request, init_local, make_instruct_request, \
-    make_completion_request
+from chat.llm_inference import setup_llm
 from chat.utils import HiddenPrints, parse_json
 from chat.conversation import ConvHistory, Message
 from chat.retrieval import RAGModule, RetrievalError
@@ -14,105 +14,50 @@ import logging
 logging.getLogger("ragatouille").setLevel(logging.CRITICAL)
 
 
-def make_context_string(rag_results):
-    context_string = ""
-    for result in rag_results:
-        context_string += f"\n\n- {result}"
-    return context_string
-
-
-def make_instruct_query(name, description, conv_history, rag_results):
-    context_string = make_context_string(rag_results)
-    system = f"You are playing the role of {name}, {description}."
-    user = f"You are chatting online. Write your next response in the conversation, based on the following excerpts" \
-           f"from {name}'s writing:{context_string}\n\nConversation history:\n\n{conv_history}\n{name}:"
-    return system, user
-
-
-def make_completion_query(name, description, conv_history, rag_results, include_timestamp):
-    context_string = make_context_string(rag_results)
-    if include_timestamp:
-        timestamp_str = f"[{dt.now().strftime('%Y-%m-%d %H:%M')}] "
-    else:
-        timestamp_str = ""
-    prompt_str = f"Character sheet:\n\n{name}: {description}.\n\nExamples of {name}'s writing:{context_string}\n\n" \
-                 f"Conversation history:\n\n{conv_history}\n{timestamp_str}{name}:"
-    return prompt_str
-
-
-def setup(config_path, model_name, k):
-    print("Setting up chatbot...")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    config = parse_json(config_path)
-    rag_module = RAGModule(config, k)
-    use_openai = model_name.startswith("gpt")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    with HiddenPrints():
-        rag_module.search(query="warmup")
-    if use_openai:
-        client = init_OpenAI()
-        instruct = True
-        model, tokenizer = None, None
-    else:
-        model, tokenizer, instruct = init_local(model_name, device)
-        client = None
-    conv_history = ConvHistory(
-        config["include_timestamp"], config["conversation_history_depth"], config["update_index_every"]
-    )
-    return rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history
-
-
-def make_response(config, query, speaker, conv_history, instruct, rag_module, use_openai, client, model, tokenizer,
-                  device, model_name, conversation_name):
-    query_timestamp = datetime.datetime.now()
-    conv_history.add(
-        Message(conversation_name, query_timestamp, speaker, query))
-    if config['update_rag_index']:
-        conv_history.update_rag_index(rag_module)
-    try:
-        full_query = conv_history.str_of_depth(config['query_context_depth'])
-        results = rag_module.search(query=full_query)
-    except RetrievalError as e:
-        results = []
-        print(f"Error retrieving documents: {e}")
-    if instruct:
-        system, user = make_instruct_query(
-            config['name'], config['description'], conv_history, results
+class ChatController:
+    def __init__(self, bot_config_path, llm_config_path, k):
+        print("Setting up chatbot...")
+        self.config = json.load(open(bot_config_path))
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.rag_module = RAGModule(self.config, k)
+        self.llm = setup_llm(llm_config_path, self.device)
+        with HiddenPrints():
+            self.rag_module.search(query="warmup")
+        self.conv_history = ConvHistory(
+            self.config["include_timestamp"], self.config["conversation_history_depth"], self.config["update_index_every"]
         )
-        prompt = f"{system} {user}"
-        if use_openai:
-            response = make_openai_request(
-                client, system, user, model_name)
-        elif instruct:
-            response = make_instruct_request(
-                model, tokenizer, prompt, device
-            )
-    else:
-        prompt = make_completion_query(
-            config['name'], config['description'], conv_history, results, config['include_timestamp']
+
+    def make_response(self, query, speaker, conversation_name):
+        query_timestamp = datetime.datetime.now()
+        self.conv_history.add(
+            Message(conversation_name, query_timestamp, speaker, query))
+        if self.config['update_rag_index']:
+            self.conv_history.update_rag_index(self.rag_module)
+        try:
+            full_query = self.conv_history.str_of_depth(self.config['query_context_depth'])
+            results = self.rag_module.search(query=full_query)
+        except RetrievalError as e:
+            results = []
+            print(f"Error retrieving documents: {e}")
+        prompt, response = self.llm.chat_step(
+            self.config['name'], speaker, self.config['description'], self.conv_history, results, self.config['include_timestamp']
         )
-        response = make_completion_request(
-            model, tokenizer, prompt, device, config['name'], config['chat_user_name']
-        )
-    response_timestamp = datetime.datetime.now()
-    conv_history.add(
-        Message(conversation_name, response_timestamp, config['name'], response))
-    if config['update_rag_index']:
-        conv_history.update_rag_index(rag_module)
-    return prompt, response
+        response_timestamp = datetime.datetime.now()
+        self.conv_history.add(
+            Message(conversation_name, response_timestamp, speaker, response))
+        if self.config['update_rag_index']:
+            self.conv_history.update_rag_index(self.rag_module)
+        return query, response
 
 
-def chat_loop(config_path, show_prompt, model_name, k):
-    rag_module, config, use_openai, client, instruct, device, model, tokenizer, conv_history = setup(
-        config_path, model_name, k
-    )
+def chat_loop(bot_config_path, llm_config_path, show_prompt, k):
+    controller = ChatController(bot_config_path, llm_config_path, k)
     while True:
         query = input("> ")
         if query == "exit":
             break
-        prompt, response = make_response(
-            config, query, config["chat_user_name"], conv_history, instruct, rag_module, use_openai, client, model,
-            tokenizer, device, model_name, None
+        prompt, response = controller.make_response(
+            query, "user", "conversation_name"
         )
         if show_prompt:
             print("------------------")
@@ -124,20 +69,15 @@ def chat_loop(config_path, show_prompt, model_name, k):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", "-c", default="configs/zef.json", help="Path to config file")
     parser.add_argument("--show_prompt", "-s",
                         action="store_true", help="Print the system prompt")
-    parser.add_argument(
-        "--model-name", "-m", default="gpt-3.5-turbo", help="model name (gpt model name or huggingface)")
-    parser.add_argument("--device", default="cuda",
-                        help="Device to use for local model (cpu or cuda)")
+    parser.add_argument('--bot_config_path', '-b', type=str,
+                        help='Path to the config file', default='configs/bot/zef.json')
+    parser.add_argument('--llm_config_path', '-l', type=str,
+                        help='Path to the model config file', default='configs/llm/Mistral.json')
     parser.add_argument("--k", default=3, type=int,)
-    if not torch.cuda.is_available():
-        parser.set_defaults(device="cpu")
-
     args = parser.parse_args()
-    chat_loop(args.config, args.show_prompt, args.model_name, args.k)
+    chat_loop(args.bot_config_path, args.llm_config_path, args.show_prompt, args.k)
 
 
 if __name__ == "__main__":

@@ -10,3 +10,6 @@ zef_specific_code/
 eval/zef
 data/
 notes.txt
+configs/llm/*
+configs/discord/*
+configs/bot/example.json
