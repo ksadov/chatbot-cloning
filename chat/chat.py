@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--bot_config_path', '-b', type=str,
                         help='Path to the config file', default='configs/bot/zef.json')
     parser.add_argument('--llm_config_path', '-l', type=str,
-                        help='Path to the model config file', default='configs/llm/gpt-4o-mini.json')
+                        help='Path to the model config file', default='configs/llm/Mixtral-8x7B-v01.json')
     parser.add_argument("--k", default=3, type=int,)
     args = parser.parse_args()
     chat_loop(args.bot_config_path, args.llm_config_path, args.show_prompt, args.k)

@@ -42,14 +42,14 @@ class LLM:
             response = self.make_instruct_request(system, user)
         else:
             prompt = make_completion_query(name, chat_user_name, description, conv_history, rag_results, include_timestamp)
-            response = self.make_completion_request(prompt, name, "friend", deterministic=False)
+            response = self.make_completion_request(prompt, name, chat_user_name)
         return prompt, response
 
 
     def make_instruct_request(self, prompt):
         pass
 
-    def make_completion_request(self, prompt):
+    def make_completion_request(self, prompt, name, chat_user_name):
         pass
 
 class LocalLLM(LLM):
@@ -65,7 +65,7 @@ class LocalLLM(LLM):
         return parse_instruct_output(output)
 
 
-    def make_completion_request(self, prompt, target_name, chat_user_name, deterministic=False):
+    def make_completion_request(self, prompt, target_name, chat_user_name):
         output = self.pipe(prompt)[0]['generated_text']
         return parse_completion_output(output, prompt, target_name, chat_user_name)
 
@@ -85,14 +85,15 @@ class RemoteLLM(LLM):
         )
         return response.json()["choices"][0]["message"]["content"]
 
-    def make_completion_request(self, prompt):
+    def make_completion_request(self, prompt, name, chat_user_name):
         # use completion api
         response = requests.post(
             self.api_base,
             headers={"Authorization": f"Bearer {self.api_key}"},
             json={"model": self.model, "prompt": prompt},
         )
-        return response.json()["choices"][0]["text"]
+        raw_response = response.json()["choices"][0]["text"]
+        return parse_completion_output(raw_response, prompt, name, chat_user_name)
 
 
 def setup_llm(config_path, device):
