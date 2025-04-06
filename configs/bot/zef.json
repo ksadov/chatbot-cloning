@@ -1,7 +1,8 @@
 {
   "name": "Zef",
   "description": "a Taiwanese American man interested in esoteric religion and internet culture",
-  "vector_store_endpoint": "http://localhost:5000",
+  "gt_store_endpoint": null,
+  "conversation_store_endpoint": "http://localhost:5000",
   "include_timestamp": false,
   "query_context_depth": 3,
   "conversation_history_depth": 5,

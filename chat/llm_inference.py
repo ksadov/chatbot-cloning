@@ -12,15 +12,38 @@ def make_context_string(rag_results: List[str]) -> str:
     return context_string
 
 
+def format_rag_results(gt_results: List[str], conversation_results: List[str]) -> str:
+    gt_context_string = make_context_string(gt_results)
+    gt_context_string = (
+        f"Examples of target's writing:{gt_context_string}\n\n"
+        if gt_context_string
+        else ""
+    )
+    conversation_context_string = make_context_string(conversation_results)
+    conversation_context_string = (
+        f"Examples of previous simulated conversation:{conversation_context_string}\n\n"
+        if conversation_context_string
+        else ""
+    )
+    return gt_context_string, conversation_context_string
+
+
 def make_instruct_query(
-    name: str, description: str, conv_history: str, rag_results: List[str]
+    name: str,
+    description: str,
+    conv_history: str,
+    gt_results: List[str],
+    conversation_results: List[str],
 ) -> Tuple[str, str]:
-    context_string = make_context_string(rag_results)
-    system = f"You are playing the role of {name}, {description}."
+    gt_context_string, conversation_context_string = format_rag_results(
+        gt_results, conversation_results
+    )
+    system = ""
     user = (
-        f"You are chatting online. "
-        f"Write your next response in the conversation, based on the following excerpts"
-        f"from {name}'s writing:{context_string}\n\n"
+        f"You are simulating {name}, {description}, in an online conversation."
+        f"Write the next response in the conversation, based on excerpts"
+        f"{gt_context_string}"
+        f"{conversation_context_string}"
         f"Conversation history:\n\n{conv_history}\n{name}:"
     )
     return system, user
@@ -31,17 +54,21 @@ def make_completion_query(
     chat_user_name: str,
     description: str,
     conv_history: str,
-    rag_results: List[str],
+    gt_results: List[str],
+    conversation_results: List[str],
     include_timestamp: bool,
 ) -> str:
-    context_string = make_context_string(rag_results)
+    gt_context_string, conversation_context_string = format_rag_results(
+        gt_results, conversation_results
+    )
     if include_timestamp:
         timestamp_str = f"[{dt.now().strftime('%Y-%m-%d %H:%M')}] "
     else:
         timestamp_str = ""
     prompt_str = (
         f"Character sheet:\n\n{name}: {description}.\n\n"
-        f"Examples of {name}'s writing:{context_string}\n\n"
+        f"{gt_context_string}"
+        f"{conversation_context_string}"
         f"Conversation history:\n\n{conv_history}\n{timestamp_str}{name}:"
     )
     return prompt_str
@@ -74,12 +101,13 @@ class LLM:
         chat_user_name: str,
         description: str,
         conv_history: str,
-        rag_results: List[str],
+        gt_results: List[str],
+        conversation_results: List[str],
         include_timestamp: bool,
     ) -> Tuple[str, List[str]]:
         if self.instruct:
             system, user = make_instruct_query(
-                name, description, conv_history, rag_results
+                name, description, conv_history, gt_results, conversation_results
             )
             prompt = {"system": system, "user": user}
             response = self.make_instruct_request(system, user)
@@ -91,7 +119,8 @@ class LLM:
                 chat_user_name,
                 description,
                 conv_history,
-                rag_results,
+                gt_results,
+                conversation_results,
                 include_timestamp,
             )
             raw_response = self.make_completion_request(prompt, name, chat_user_name)

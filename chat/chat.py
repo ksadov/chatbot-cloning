@@ -4,15 +4,13 @@ import torch
 import json
 import requests
 from datetime import datetime as dt
-
+from retrieval.embedding_core import RetrievalError
 from chat.llm_inference import LLM
 from chat.utils import HiddenPrints, parse_json
 from chat.conversation import ConvHistory, Message
 
 # silence annoying ragatouille logging
 import logging
-
-logging.getLogger("ragatouille").setLevel(logging.CRITICAL)
 
 
 class RagModule:
@@ -41,7 +39,16 @@ class ChatController:
         print("Setting up chatbot...")
         self.config = json.load(open(bot_config_path))
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.rag_module = RagModule(self.config["vector_store_endpoint"])
+        self.gt_rag_module = (
+            RagModule(self.config["gt_store_endpoint"])
+            if self.config["gt_store_endpoint"]
+            else None
+        )
+        self.conversation_rag_module = (
+            RagModule(self.config["conversation_store_endpoint"])
+            if self.config["conversation_store_endpoint"]
+            else None
+        )
         self.llm_config = json.load(open(llm_config_path))
         self.llm = LLM(self.llm_config, self.device)
         self.conv_history = ConvHistory(
@@ -56,12 +63,19 @@ class ChatController:
             Message(conversation_name, query_timestamp, speaker, query)
         )
         if self.config["update_rag_index"]:
-            self.conv_history.update_rag_index(self.rag_module)
+            self.conv_history.update_rag_index(self.conversation_rag_module)
         try:
             full_query = self.conv_history.str_of_depth(
                 self.config["query_context_depth"]
             )
-            results = self.rag_module.search(full_query)
+            if self.config["gt_store_endpoint"]:
+                gt_results = self.gt_rag_module.search(full_query)
+            else:
+                gt_results = []
+            if self.config["conversation_store_endpoint"]:
+                conversation_results = self.conversation_rag_module.search(full_query)
+            else:
+                conversation_results = []
         except RetrievalError as e:
             results = []
             print(f"Error retrieving documents: {e}")
@@ -70,7 +84,8 @@ class ChatController:
             speaker,
             self.config["description"],
             self.conv_history,
-            results,
+            gt_results,
+            conversation_results,
             self.config["include_timestamp"],
         )
         # stagger response timestamps by 1 second
@@ -85,7 +100,7 @@ class ChatController:
                 )
             )
         if self.config["update_rag_index"]:
-            self.conv_history.update_rag_index(self.rag_module)
+            self.conv_history.update_rag_index(self.conversation_rag_module)
         return prompt, responses
 
 
