@@ -50,7 +50,9 @@ class ChatController:
             else None
         )
         self.llm_config = json.load(open(llm_config_path))
-        self.llm = LLM(self.llm_config, self.device)
+        self.llm = LLM(
+            self.llm_config, self.config["prompt_template_path"], self.device
+        )
         self.conv_history = ConvHistory(
             self.config["include_timestamp"],
             self.config["conversation_history_depth"],
