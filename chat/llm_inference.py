@@ -29,7 +29,6 @@ class LLM:
         self,
         name: str,
         chat_user_name: str,
-        description: str,
         conv_history: str,
         gt_results: List[str],
         conversation_results: List[str],
@@ -38,14 +37,13 @@ class LLM:
         prompt = self.conversation_formatter.make_query(
             name,
             chat_user_name,
-            description,
             conv_history,
             gt_results,
             conversation_results,
             include_timestamp,
         )
         if self.instruct:
-            response = self.make_instruct_request(user)
+            response = self.make_instruct_request(prompt)
             # todo, handle multiple messages better when I get a good scaffold figured out
             responses = [response]
         else:
@@ -55,20 +53,44 @@ class LLM:
             )
         return prompt, responses
 
-    def make_instruct_request(self, user: str) -> str:
-        # use chat completion api: https://platform.openai.com/docs/api-reference/chat
+    def make_instruct_request(self, prompt: str) -> str:
+        is_anthropic = "claude" in self.model.lower() or "anthropic" in self.api_base
+
+        headers = {"content-type": "application/json"}
+
+        if is_anthropic:
+            headers.update(
+                {"x-api-key": self.api_key, "anthropic-version": "2023-06-01"}
+            )
+        else:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        request_body = {
+            "model": self.model,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+            **self.prompt_params,
+        }
+
         response = requests.post(
             self.api_base,
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            json={
-                "model": self.model,
-                "messages": [
-                    {"role": "user", "content": user},
-                ],
-                **self.prompt_params,
-            },
+            headers=headers,
+            json=request_body,
         )
-        return response.json()["choices"][0]["message"]["content"]
+        response.raise_for_status()
+
+        is_messages_endpoint = "messages" in self.api_base
+
+        try:
+            if is_messages_endpoint:
+                results = response.json()["content"][0]["text"]
+            else:
+                results = response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            raise Exception(f"Failed to parse API response: {str(e)}")
+
+        return results
 
     def make_completion_request(
         self, prompt: str, name: str, chat_user_name: str

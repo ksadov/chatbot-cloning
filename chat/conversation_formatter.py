@@ -13,7 +13,6 @@ class ConversationPromptFormatter:
         self,
         name: str,
         chat_user_name: str,
-        description: str,
         conv_history: str,
         gt_results: List[str],
         conversation_results: List[str],
@@ -21,7 +20,6 @@ class ConversationPromptFormatter:
     ) -> str:
         context = {
             "name": name,
-            "description": description,
             "gt_results": gt_results,
             "conversation_results": conversation_results,
             "conv_history": conv_history,

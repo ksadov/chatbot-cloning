@@ -35,7 +35,7 @@ class RagModule:
 
 
 class ChatController:
-    def __init__(self, bot_config_path, llm_config_path):
+    def __init__(self, bot_config_path):
         print("Setting up chatbot...")
         self.config = json.load(open(bot_config_path))
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -49,7 +49,8 @@ class ChatController:
             if self.config["conversation_store_endpoint"]
             else None
         )
-        self.llm_config = json.load(open(llm_config_path))
+        with open(self.config["llm_config"], "r") as f:
+            self.llm_config = json.load(f)
         self.llm = LLM(
             self.llm_config, self.config["prompt_template_path"], self.device
         )
@@ -84,7 +85,6 @@ class ChatController:
         prompt, responses = self.llm.chat_step(
             self.config["name"],
             speaker,
-            self.config["description"],
             self.conv_history,
             gt_results,
             conversation_results,
@@ -106,8 +106,8 @@ class ChatController:
         return prompt, responses
 
 
-def chat_loop(bot_config_path, llm_config_path, show_prompt):
-    controller = ChatController(bot_config_path, llm_config_path)
+def chat_loop(bot_config_path, show_prompt):
+    controller = ChatController(bot_config_path)
     while True:
         query = input("> ")
         if query == "exit":
@@ -132,17 +132,10 @@ def main():
         "-b",
         type=str,
         help="Path to the config file",
-        default="configs/bot/zef.json",
-    )
-    parser.add_argument(
-        "--llm_config_path",
-        "-l",
-        type=str,
-        help="Path to the model config file",
-        default="configs/llm/Mixtral-8x7B-v01.json",
+        default="configs/bot/zef_instruct.json",
     )
     args = parser.parse_args()
-    chat_loop(args.bot_config_path, args.llm_config_path, args.show_prompt)
+    chat_loop(args.bot_config_path, args.show_prompt)
 
 
 if __name__ == "__main__":

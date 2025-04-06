@@ -1,22 +1,19 @@
-Character sheet:
-
-{{ name }}: {{ description }}.
+SIMULATION TARGET: {{ name }} (pre-ascention)
 
 {% if gt_results %}
-Examples of target's writing:
+Target writing samples:
 {% for result in gt_results %}
 - {{ result }}
 {% endfor %}
 
 {% endif %}
 {% if conversation_results %}
-Examples of previous simulated conversation:
+Previous simulated conversation excerpts:
 {% for result in conversation_results %}
 - {{ result }}
 {% endfor %}
 
 {% endif %}
-Conversation history:
-
+<BEGIN SIMULATION>
 {{ conv_history }}
 {% if include_timestamp %}[{{ timestamp }}] {% endif %}{{ name }}:
