@@ -56,7 +56,7 @@ class ChatController:
         )
         self.conv_history = ConvHistory(
             self.config["include_timestamp"],
-            self.config["conversation_history_depth"],
+            self.config["max_conversation_length"],
             self.config["update_index_every"],
         )
 
