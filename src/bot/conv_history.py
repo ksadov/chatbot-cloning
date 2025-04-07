@@ -1,9 +1,19 @@
-import pyarrow as pa
+import datetime
+
 import pandas as pd
+import pyarrow as pa
+
+from src.bot.rag_module import RagModule
 
 
 class Message:
-    def __init__(self, conversation, timestamp, user_id, content):
+    def __init__(
+        self,
+        conversation: str,
+        timestamp: datetime.datetime,
+        user_id: str,
+        content: str,
+    ):
         self.conversation = conversation
         self.timestamp = timestamp
         self.user_id = user_id
@@ -31,7 +41,11 @@ class Message:
 
 class ConvHistory:
     def __init__(
-        self, include_timestamp, max_char_length, update_chunk_length, rag_module
+        self,
+        include_timestamp: bool,
+        max_char_length: int,
+        update_chunk_length: int,
+        rag_module: RagModule,
     ):
         self.include_timestamp = include_timestamp
         self.history = []
@@ -81,7 +95,7 @@ class ConvHistory:
     def clear(self):
         self.history = []
 
-    def str_of_depth(self, depth):
+    def str_of_depth(self, depth: int) -> str:
         if self.include_timestamp:
             return "\n".join(
                 [
@@ -97,5 +111,5 @@ class ConvHistory:
                 ]
             )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.str_of_depth(len(self.history))

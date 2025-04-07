@@ -1,7 +1,8 @@
-from pathlib import Path
-from jinja2 import Template
-from typing import List, Tuple
 from datetime import datetime as dt
+from pathlib import Path
+from typing import List
+
+from jinja2 import Template
 
 
 class ConversationPromptFormatter:

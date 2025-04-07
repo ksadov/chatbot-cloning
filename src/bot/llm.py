@@ -1,11 +1,9 @@
-from typing import List, Tuple, Optional
-from transformers import pipeline, AutoTokenizer
-from datetime import datetime as dt
-import requests
-import json
-import os
 from pathlib import Path
-from chat.conversation_formatter import ConversationPromptFormatter
+from typing import List, Optional, Tuple
+
+import requests
+
+from src.bot.conversation_prompt_formatter import ConversationPromptFormatter
 
 
 class LLM:

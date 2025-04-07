@@ -1,42 +1,20 @@
-import argparse
 import datetime
-import torch
 import json
-import requests
-from datetime import datetime as dt
-from chat.llm_inference import LLM
-from chat.utils import HiddenPrints, parse_json
-from chat.conversation import ConvHistory, Message
+from pathlib import Path
 
-# silence annoying ragatouille logging
-import logging
+import torch
 
-
-class RagModule:
-    def __init__(self, vector_store_endpoint):
-        self.vector_store_endpoint = vector_store_endpoint
-
-    def search(self, query):
-        response = requests.post(
-            f"{self.vector_store_endpoint}/api/search",
-            json={"query": query, "n_results": 5},
-        )
-        response.raise_for_status()
-        response_texts = [result["text"] for result in response.json()["results"]]
-        return response_texts
-
-    def update(self, query):
-        response = requests.post(
-            f"{self.vector_store_endpoint}/api/update",
-            json={"document": query},
-        )
-        response.raise_for_status()
+from src.bot.conv_history import ConvHistory, Message
+from src.bot.llm import LLM
+from src.bot.rag_module import RagModule
 
 
 class ChatController:
-    def __init__(self, bot_config_path):
+
+    def __init__(self, bot_config_path: Path):
         print("Setting up chatbot...")
-        self.config = json.load(open(bot_config_path))
+        with open(bot_config_path, "r") as f:
+            self.config = json.load(f)
         self.target_name = self.config["name"]
         self.default_user_name = self.config["default_user_name"]
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -62,7 +40,9 @@ class ChatController:
             self.conversation_rag_module if self.config["update_rag_index"] else None,
         )
 
-    def make_response(self, query, speaker, conversation_name):
+    def make_response(
+        self, query: str, speaker: str, conversation_name: str
+    ) -> tuple[str, list[str]]:
         query_timestamp = datetime.datetime.now()
         self.conv_history.add(
             Message(conversation_name, query_timestamp, speaker, query)
@@ -80,7 +60,8 @@ class ChatController:
             else:
                 conversation_results = []
         except Exception as e:
-            results = []
+            gt_results = []
+            conversation_results = []
             print(f"Error retrieving documents: {e}")
         prompt, responses = self.llm.chat_step(
             self.target_name,
@@ -102,41 +83,3 @@ class ChatController:
                 )
             )
         return prompt, responses
-
-
-def chat_loop(bot_config_path, show_prompt):
-    controller = ChatController(bot_config_path)
-    while True:
-        query = input("> ")
-        if query == "exit":
-            break
-        prompt, responses = controller.make_response(
-            query, controller.default_user_name, "conversation"
-        )
-        if show_prompt:
-            print("------------------")
-            print("PROMPT:")
-            print(prompt)
-            print("------------------")
-        for response in responses:
-            print(response)
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--show_prompt", "-s", action="store_true", help="Print the system prompt"
-    )
-    parser.add_argument(
-        "--bot_config_path",
-        "-b",
-        type=str,
-        help="Path to the config file",
-        default="configs/bot/zef_instruct.json",
-    )
-    args = parser.parse_args()
-    chat_loop(args.bot_config_path, args.show_prompt)
-
-
-if __name__ == "__main__":
-    main()
