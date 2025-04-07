@@ -50,7 +50,6 @@ def create_flask_app(config_path: str):
             return jsonify({"error": "Document is required"}), 400
 
         try:
-            print("Updating embedding store with document: ", data["document"])
             metadata = data.get("metadata", {})
             document = data["document"]
             success = embedding_store.update(document, metadata)

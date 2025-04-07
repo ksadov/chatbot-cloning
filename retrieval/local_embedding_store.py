@@ -14,7 +14,7 @@ from llama_index.core import (
 )
 import faiss
 
-from retrieval.embedding_core import EmbeddingStore, RetrievalError
+from retrieval.embedding_core import EmbeddingStore
 from retrieval.embed_model import make_embed_model
 
 
@@ -117,24 +117,21 @@ class LocalEmbeddingStore(EmbeddingStore):
         if n != self.rag_module._similarity_top_k:
             self.rag_module = self.rag_index.as_retriever(similarity_top_k=n)
 
-        try:
-            retrieved = self.rag_module.retrieve(query)
+        retrieved = self.rag_module.retrieve(query)
 
-            # Convert to a more API-friendly format
-            results = []
-            for i, node in enumerate(retrieved):
-                results.append(
-                    {
-                        "id": i,
-                        "text": node.text,
-                        "score": node.score if hasattr(node, "score") else None,
-                        "metadata": node.metadata if hasattr(node, "metadata") else {},
-                    }
-                )
+        # Convert to a more API-friendly format
+        results = []
+        for i, node in enumerate(retrieved):
+            results.append(
+                {
+                    "id": i,
+                    "text": node.text,
+                    "score": node.score if hasattr(node, "score") else None,
+                    "metadata": node.metadata if hasattr(node, "metadata") else {},
+                }
+            )
 
-            return results
-        except Exception as e:
-            raise RetrievalError(f"Error during retrieval: {str(e)}")
+        return results
 
     def update(self, document: str, metadata: Dict[str, Any] = {}) -> bool:
         """
@@ -147,11 +144,9 @@ class LocalEmbeddingStore(EmbeddingStore):
         Returns:
             Boolean indicating if the update was successful
         """
-        print("Allowing update: ", self.allow_update)
         if not self.allow_update:
             return False
 
-        print("Updating embedding store with document: ", document)
         metadata = metadata or {}
         node = Document(text=document, metadata=metadata)
 

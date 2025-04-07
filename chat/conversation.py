@@ -31,31 +31,52 @@ class Message:
 
 class ConvHistory:
     def __init__(
-        self,
-        include_timestamp,
-        max_char_length,
-        update_chunk_length,
+        self, include_timestamp, max_char_length, update_chunk_length, rag_module
     ):
         self.include_timestamp = include_timestamp
         self.history = []
         self.max_char_length = max_char_length
         self.update_chunk_length = update_chunk_length
-        self.update_counter = 0
-
-    def trim_history(self):
-        while len(str(self)) > self.max_char_length:
-            self.history.pop(0)
+        self.removed_buffer = []
+        self.rag_module = rag_module
 
     def add(self, message: Message):
         self.history.append(message)
-        self.update_counter += 1
         self.trim_history()
 
-    def update_rag_index(self, rag_module):
-        if self.update_counter >= self.update_chunk_length:
-            self.update_counter = 0
-            chunk_str = self.str_of_depth(self.update_chunk_length)
-            rag_module.update(chunk_str)
+    def trim_history(self):
+        while len(str(self)) > self.max_char_length:
+            removed_msg = self.history.pop(0)
+            self.removed_buffer.append(removed_msg)
+            # When buffer reaches chunk size, trigger update
+            if len(self.removed_buffer) >= self.update_chunk_length:
+                self._process_removed_buffer()
+
+    def _process_removed_buffer(self):
+        if not self.removed_buffer:
+            return
+        # Process all messages in the buffer, even if more than chunk_length
+        chunk_str = self._buffer_to_string()
+        self.removed_buffer = []
+        if self.rag_module is not None:
+            self.rag_module.update(chunk_str)
+        return chunk_str
+
+    def _buffer_to_string(self):
+        if self.include_timestamp:
+            return "\n".join(
+                [
+                    f"[{message.timestamp.strftime('%Y-%m-%d %H:%M')}] {message.user_id}: {message.content}"
+                    for message in self.removed_buffer
+                ]
+            )
+        else:
+            return "\n".join(
+                [
+                    f"{message.user_id}: {message.content}"
+                    for message in self.removed_buffer
+                ]
+            )
 
     def clear(self):
         self.history = []

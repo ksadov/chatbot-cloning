@@ -2,12 +2,6 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 
 
-class RetrievalError(Exception):
-    """Exception raised for errors in the retrieval process."""
-
-    pass
-
-
 class EmbeddingStore(ABC):
     """Abstract base class for embedding stores."""
 

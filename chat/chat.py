@@ -4,7 +4,6 @@ import torch
 import json
 import requests
 from datetime import datetime as dt
-from retrieval.embedding_core import RetrievalError
 from chat.llm_inference import LLM
 from chat.utils import HiddenPrints, parse_json
 from chat.conversation import ConvHistory, Message
@@ -60,6 +59,7 @@ class ChatController:
             self.config["include_timestamp"],
             self.config["max_conversation_length"],
             self.config["update_index_every"],
+            self.conversation_rag_module if self.config["update_rag_index"] else None,
         )
 
     def make_response(self, query, speaker, conversation_name):
@@ -67,8 +67,6 @@ class ChatController:
         self.conv_history.add(
             Message(conversation_name, query_timestamp, speaker, query)
         )
-        if self.config["update_rag_index"]:
-            self.conv_history.update_rag_index(self.conversation_rag_module)
         try:
             full_query = self.conv_history.str_of_depth(
                 self.config["query_context_depth"]
@@ -81,7 +79,7 @@ class ChatController:
                 conversation_results = self.conversation_rag_module.search(full_query)
             else:
                 conversation_results = []
-        except RetrievalError as e:
+        except Exception as e:
             results = []
             print(f"Error retrieving documents: {e}")
         prompt, responses = self.llm.chat_step(
@@ -103,8 +101,6 @@ class ChatController:
                     conversation_name, response_timestamp, self.config["name"], response
                 )
             )
-        if self.config["update_rag_index"]:
-            self.conv_history.update_rag_index(self.conversation_rag_module)
         return prompt, responses
 
 

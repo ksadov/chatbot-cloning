@@ -6,7 +6,7 @@
   "conversation_store_endpoint": "http://localhost:5001",
   "include_timestamp": false,
   "query_context_depth": 3,
-  "max_conversation_length": 16384,
+  "max_conversation_length": 100,
   "update_index_every": 5,
   "default_user_name": "Konstantine",
   "update_rag_index": true
