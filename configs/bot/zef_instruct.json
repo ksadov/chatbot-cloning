@@ -8,6 +8,6 @@
   "query_context_depth": 3,
   "max_conversation_length": 16384,
   "update_index_every": 5,
-  "chat_user_name": "Konstantine",
+  "default_user_name": "Konstantine",
   "update_rag_index": false
 }

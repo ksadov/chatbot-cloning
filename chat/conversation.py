@@ -54,7 +54,8 @@ class ConvHistory:
     def update_rag_index(self, rag_module):
         if self.update_counter >= self.update_chunk_length:
             self.update_counter = 0
-            rag_module.update(str(self[-self.update_chunk_length :]))
+            chunk_str = self.str_of_depth(self.update_chunk_length)
+            rag_module.update(chunk_str)
 
     def clear(self):
         self.history = []

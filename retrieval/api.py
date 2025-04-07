@@ -49,10 +49,10 @@ def create_flask_app(config_path: str):
         if not data or "document" not in data:
             return jsonify({"error": "Document is required"}), 400
 
-        document = data["document"]
-        metadata = data.get("metadata", {})
-
         try:
+            print("Updating embedding store with document: ", data["document"])
+            metadata = data.get("metadata", {})
+            document = data["document"]
             success = embedding_store.update(document, metadata)
             if success:
                 return jsonify({"status": "success"})

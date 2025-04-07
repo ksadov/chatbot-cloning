@@ -29,7 +29,7 @@ class RagModule:
     def update(self, query):
         response = requests.post(
             f"{self.vector_store_endpoint}/api/update",
-            json={"query": query},
+            json={"document": query},
         )
         response.raise_for_status()
 
@@ -38,6 +38,8 @@ class ChatController:
     def __init__(self, bot_config_path):
         print("Setting up chatbot...")
         self.config = json.load(open(bot_config_path))
+        self.target_name = self.config["name"]
+        self.default_user_name = self.config["default_user_name"]
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.gt_rag_module = (
             RagModule(self.config["gt_store_endpoint"])
@@ -83,7 +85,7 @@ class ChatController:
             results = []
             print(f"Error retrieving documents: {e}")
         prompt, responses = self.llm.chat_step(
-            self.config["name"],
+            self.target_name,
             speaker,
             self.conv_history,
             gt_results,
@@ -112,7 +114,9 @@ def chat_loop(bot_config_path, show_prompt):
         query = input("> ")
         if query == "exit":
             break
-        prompt, responses = controller.make_response(query, "user", "conversation_name")
+        prompt, responses = controller.make_response(
+            query, controller.default_user_name, "conversation"
+        )
         if show_prompt:
             print("------------------")
             print("PROMPT:")

@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -36,7 +37,7 @@ class LocalEmbeddingStore(EmbeddingStore):
             index_path: Path to store the FAISS index
             embedding_config_path: Path to the embedding config
             vector_dimension: Dimension of the embedding vectors
-            document_path: Path to the document to index (if creating a new index)
+            document_path: Path to the documents from which to initialize new index
             allow_update: Whether to allow adding new documents
             n_results: Default number of results to return from search
         """
@@ -62,15 +63,11 @@ class LocalEmbeddingStore(EmbeddingStore):
             index = load_index_from_storage(storage_context=storage_context)
             return index
         else:
-            if not self.document_path:
-                raise ValueError(
-                    "Document path must be provided when creating a new index"
-                )
-
             print(f"Creating index at {self.index_path} from {self.document_path}")
             faiss_index = faiss.IndexFlatL2(self.vector_dimension)
-
-            if str(self.document_path).endswith(".txt"):
+            if self.document_path is None:
+                documents = []
+            elif str(self.document_path).endswith(".txt"):
                 documents = self._prep_txt_document(self.document_path)
             else:
                 raise ValueError(f"Unsupported document type: {self.document_path}")
@@ -139,7 +136,7 @@ class LocalEmbeddingStore(EmbeddingStore):
         except Exception as e:
             raise RetrievalError(f"Error during retrieval: {str(e)}")
 
-    def update(self, document: str, metadata: Optional[Dict[str, Any]] = None) -> bool:
+    def update(self, document: str, metadata: Dict[str, Any] = {}) -> bool:
         """
         Add a new document to the embedding store.
 
@@ -150,9 +147,11 @@ class LocalEmbeddingStore(EmbeddingStore):
         Returns:
             Boolean indicating if the update was successful
         """
+        print("Allowing update: ", self.allow_update)
         if not self.allow_update:
             return False
 
+        print("Updating embedding store with document: ", document)
         metadata = metadata or {}
         node = Document(text=document, metadata=metadata)
 
@@ -161,7 +160,6 @@ class LocalEmbeddingStore(EmbeddingStore):
             self.rag_index.storage_context.persist(persist_dir=self.index_path)
             return True
         except Exception as e:
-            print(f"Error updating index: {str(e)}")
             return False
 
     def health_check(self) -> Dict[str, Any]:
@@ -189,22 +187,25 @@ class LocalEmbeddingStore(EmbeddingStore):
 
 # For testing
 def test():
-    index_path = Path(".vector_store/test_index")
-    embedding_model_name = "BAAI/bge-large-en-v1.5"
+    index_path = Path(".vector_store/test_index_empty")
+    embedding_model_path = Path("configs/embedding/bge-large-en-v1.5.json")
     vector_dimension = 1024
-    document_path = Path("data/zef.txt")
+    document_path = None
     allow_update = True
     n_results = 5
 
     local_embedding_store = LocalEmbeddingStore(
         index_path,
-        embedding_model_name,
+        embedding_model_path,
         vector_dimension,
         document_path,
         allow_update,
         n_results,
     )
     print(local_embedding_store.search("favorite animal"))
+    local_embedding_store.update("favorite animal is a dog")
+    print(local_embedding_store.search("favorite animal"))
+    shutil.rmtree(index_path)
 
 
 if __name__ == "__main__":
