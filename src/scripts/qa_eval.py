@@ -1,13 +1,14 @@
 import argparse
+import json
 import os
 import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from src.bot.chat_controller import ChatController
 
 
-def get_qa_questions(gt_tsv_file: Path) -> Tuple[List[str], List[str]]:
+def get_tsv_qa_questions(gt_tsv_file: Path) -> Tuple[List[str], List[str], List[str]]:
     # get all ground truth responses
     with open(gt_tsv_file, "r") as gt_tsv:
         gt_tsv_lines = gt_tsv.readlines()
@@ -15,7 +16,55 @@ def get_qa_questions(gt_tsv_file: Path) -> Tuple[List[str], List[str]]:
     gt_tsv_lines = [line.strip() for line in gt_tsv_lines][1:]
     gt_tsv_authors = [line.split("\t")[0] for line in gt_tsv_lines]
     gt_tsv_questions = [line.split("\t")[-2] for line in gt_tsv_lines]
-    return gt_tsv_authors, gt_tsv_questions
+    gt_tsv_responses = [line.split("\t")[-1] for line in gt_tsv_lines]
+    return gt_tsv_authors, gt_tsv_questions, gt_tsv_responses
+
+
+def get_json_qa_questions(gt_json_file: Path) -> Tuple[List[str], List[str]]:
+    with open(gt_json_file, "r") as gt_json:
+        gt_json_data = json.load(gt_json)
+    gt_json_authors = [item["author"] for item in gt_json_data]
+    gt_json_questions = [item["question"] for item in gt_json_data]
+    gt_json_responses = [item["response"] for item in gt_json_data]
+    return gt_json_authors, gt_json_questions, gt_json_responses
+
+
+def make_output_json(
+    authors: List[str],
+    questions: List[str],
+    responses: List[List[str]],
+    ground_truths: List[str],
+) -> str:
+    lines = [
+        json.dumps(
+            {
+                "author": author,
+                "question": question,
+                "response": response,
+                "ground_truth": ground_truth,
+            }
+        )
+        for author, question, response, ground_truth in zip(
+            authors, questions, responses, ground_truths
+        )
+    ]
+    return "\n".join(lines)
+
+
+def make_output_tsv(
+    authors: List[str],
+    questions: List[str],
+    responses: List[List[str]],
+    ground_truths: List[str],
+) -> str:
+    stringified_responses = [str(response) for response in responses]
+    lines = [
+        f"{author}\t{question}\t{response}\t{ground_truth}"
+        for author, question, response, ground_truth in zip(
+            authors, questions, stringified_responses, ground_truths
+        )
+    ]
+    return "\n".join(lines)
 
 
 def make_answer_tsv(
@@ -26,6 +75,7 @@ def make_answer_tsv(
     file_log_level: str,
     show_prompt: bool,
     sleep_time: int,
+    output_format: str,
 ):
     controller = ChatController(
         config_path,
@@ -34,25 +84,36 @@ def make_answer_tsv(
         file_log_level=file_log_level,
         qa_mode=True,
     )
-    qa_authors, qa_questions = get_qa_questions(gt_tsv_file)
+    if gt_tsv_file.suffix == ".tsv":
+        qa_authors, qa_questions, qa_ground_truths = get_tsv_qa_questions(gt_tsv_file)
+    elif gt_tsv_file.suffix == ".json":
+        qa_authors, qa_questions, qa_ground_truths = get_json_qa_questions(gt_tsv_file)
+    else:
+        raise ValueError(f"Unsupported file type: {gt_tsv_file.suffix}")
     qa_responses = []
     for author, question in zip(qa_authors, qa_questions):
         prompt, responses = controller.make_response(question, author, "conversation")
         if show_prompt:
             print("prompt:", prompt)
         print("question:", question)
-        response_str = str(responses)
-        print("responses:", response_str)
-        qa_responses.append(response_str)
+        print("responses:", responses)
+        qa_responses.append(responses)
         time.sleep(sleep_time)
-    response_tsv_lines = []
-    for author, question, response in zip(qa_authors, qa_questions, qa_responses):
-        response_tsv_lines.append(f"{author}\t{question}\t{response}")
     out_fname = os.path.join(out_dir, f"{config_path.stem}.tsv")
+    if output_format == "tsv":
+        content = make_output_tsv(
+            qa_authors, qa_questions, qa_responses, qa_ground_truths
+        )
+        out_fname = os.path.join(out_dir, f"{config_path.stem}.tsv")
+    elif output_format == "json":
+        content = make_output_json(
+            qa_authors, qa_questions, qa_responses, qa_ground_truths
+        )
+        out_fname = os.path.join(out_dir, f"{config_path.stem}.json")
+    else:
+        raise ValueError(f"Unsupported output format: {output_format}")
     with open(out_fname, "w") as f:
-        f.write("author\tquestion\tanswer\n")
-        for line in response_tsv_lines:
-            f.write(line + "\n")
+        f.write(content)
     print(f"Saved responses to {out_fname}")
 
 
@@ -81,14 +142,14 @@ def main():
     )
     parser.add_argument(
         "--console_log_level",
-        "-l",
+        "-cl",
         type=str,
         help="Console log level",
         default="INFO",
     )
     parser.add_argument(
         "--file_log_level",
-        "-f",
+        "-fl",
         type=str,
         help="File log level",
         default="INFO",
@@ -106,6 +167,14 @@ def main():
         help="Sleep time between requests (in seconds)",
         default=1,
     )
+    parser.add_argument(
+        "--output_format",
+        "-f",
+        type=str,
+        help="Output format",
+        default="json",
+        choices=["json", "tsv"],
+    )
     args = parser.parse_args()
     make_answer_tsv(
         args.gt_tsv_file,
@@ -115,6 +184,7 @@ def main():
         args.file_log_level,
         args.show_prompt,
         args.sleep_time,
+        args.output_format,
     )
 
 
