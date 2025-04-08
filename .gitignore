@@ -16,3 +16,4 @@ configs/discord/*
 configs/bot/example.json
 configs/embedding/*
 logs/*
+zef_eval/*

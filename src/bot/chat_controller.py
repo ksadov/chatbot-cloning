@@ -18,8 +18,10 @@ class ChatController:
         log_dir: Path,
         console_log_level: str,
         file_log_level: str,
+        qa_mode: bool = False,
     ):
         self.logger = LocalLogger(log_dir, "chatbot", console_log_level, file_log_level)
+        self.qa_mode = qa_mode
         with open(bot_config_path, "r") as f:
             self.config = json.load(f)
         self.target_name = self.config["name"]
@@ -49,10 +51,14 @@ class ChatController:
             self.config["update_index_every"],
             self.conversation_rag_module if self.config["update_rag_index"] else None,
             self.logger,
+            self.qa_mode,
         )
 
     def make_response(
-        self, query: str, speaker: str, conversation_name: str
+        self,
+        query: str,
+        speaker: str,
+        conversation_name: str,
     ) -> tuple[str, list[str]]:
         self.logger.debug(f"Making response for query: {query}")
         query_timestamp = datetime.datetime.now()

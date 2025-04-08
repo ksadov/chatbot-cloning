@@ -48,6 +48,7 @@ class ConvHistory:
         update_chunk_length: int,
         rag_module: RagModule,
         logger: LocalLogger,
+        qa_mode: bool,
     ):
         self.logger = logger
         self.include_timestamp = include_timestamp
@@ -56,6 +57,7 @@ class ConvHistory:
         self.update_chunk_length = update_chunk_length
         self.removed_buffer = []
         self.rag_module = rag_module
+        self.qa_mode = qa_mode
 
     def add(self, message: Message):
         self.logger.debug(f"Adding message to history: {message}")
@@ -63,15 +65,19 @@ class ConvHistory:
         self.trim_history()
 
     def trim_history(self):
-        while len(str(self)) > self.max_char_length:
-            removed_msg = self.history.pop(0)
-            self.removed_buffer.append(removed_msg)
-            # When buffer reaches chunk size, trigger update
-            if len(self.removed_buffer) >= self.update_chunk_length:
-                self.logger.debug(
-                    f"Triggering RAG module update because buffer size {len(self.removed_buffer)} >= {self.update_chunk_length}"
-                )
-                self._process_removed_buffer()
+        if self.qa_mode:
+            # only keep most recent message
+            self.history = self.history[-1:]
+        else:
+            while len(str(self)) > self.max_char_length:
+                removed_msg = self.history.pop(0)
+                self.removed_buffer.append(removed_msg)
+                # When buffer reaches chunk size, trigger update
+                if len(self.removed_buffer) >= self.update_chunk_length:
+                    self.logger.debug(
+                        f"Triggering RAG module update because buffer size {len(self.removed_buffer)} >= {self.update_chunk_length}"
+                    )
+                    self._process_removed_buffer()
 
     def _process_removed_buffer(self):
         if not self.removed_buffer:
