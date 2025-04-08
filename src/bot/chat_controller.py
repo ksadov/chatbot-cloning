@@ -40,14 +40,7 @@ class ChatController:
             self.device,
             self.logger,
         )
-        self.conv_history = ConvHistory(
-            self.config["include_timestamp"],
-            self.config["max_conversation_length"],
-            self.config["update_index_every"],
-            self.conversation_rag_module if self.config["update_rag_index"] else None,
-            self.logger,
-            self.qa_mode,
-        )
+        self.conv_history_dict = {}
 
     def make_response(
         self,
@@ -55,13 +48,26 @@ class ChatController:
         speaker: str,
         conversation_name: str,
     ) -> tuple[str, list[str]]:
+        if conversation_name not in self.conv_history_dict:
+            self.conv_history_dict[conversation_name] = ConvHistory(
+                self.config["include_timestamp"],
+                self.config["max_conversation_length"],
+                self.config["update_index_every"],
+                (
+                    self.conversation_rag_module
+                    if self.config["update_rag_index"]
+                    else None
+                ),
+                self.logger,
+                self.qa_mode,
+            )
         self.logger.debug(f"Making response for query: {query}")
         query_timestamp = datetime.datetime.now()
-        self.conv_history.add(
+        self.conv_history_dict[conversation_name].add(
             Message(conversation_name, query_timestamp, speaker, query)
         )
         try:
-            full_query = self.conv_history.str_of_depth(
+            full_query = self.conv_history_dict[conversation_name].str_of_depth(
                 self.config["query_context_depth"]
             )
             if self.config["gt_store_endpoint"]:
@@ -79,7 +85,7 @@ class ChatController:
         prompt, responses = self.llm.chat_step(
             self.target_name,
             speaker,
-            self.conv_history,
+            self.conv_history_dict[conversation_name],
             gt_results,
             conversation_results,
             self.config["include_timestamp"],
@@ -92,7 +98,7 @@ class ChatController:
             for i in range(len(responses))
         ]
         for response, response_timestamp in zip(responses, response_timestamps):
-            self.conv_history.add(
+            self.conv_history_dict[conversation_name].add(
                 Message(
                     conversation_name, response_timestamp, self.config["name"], response
                 )
