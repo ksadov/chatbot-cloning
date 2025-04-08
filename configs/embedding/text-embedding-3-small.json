@@ -1,0 +1,8 @@
+{
+  "model_name": "text-embedding-3-small",
+  "api_base": "https://api.openai.com/v1/embeddings",
+  "api_key": "sk-proj-your-openai-api-key",
+  "params": {
+    "dimensions": 512
+  }
+}

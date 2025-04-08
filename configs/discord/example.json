@@ -1,0 +1,7 @@
+{
+  "channels": [
+    "bot-channel"
+  ],
+  "clear_command": "!clear",
+  "token": "YOUR_BOT_TOKEN"
+}

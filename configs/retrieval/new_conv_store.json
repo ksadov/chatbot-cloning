@@ -1,9 +1,0 @@
-{
-  "store_type": "local",
-  "index_path": ".vector_store/empty_init",
-  "embedding_config_path": "configs/embedding/bge-large-en-v1.5.json",
-  "vector_dimension": 1024,
-  "document_path": null,
-  "allow_update": true,
-  "n_results": 5
-}

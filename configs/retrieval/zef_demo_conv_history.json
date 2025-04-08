@@ -1,0 +1,9 @@
+{
+  "store_type": "local",
+  "index_path": ".vector_store/zef_te3small_conv_history",
+  "embedding_config_path": "configs/embedding/text-embedding-3-small.json",
+  "vector_dimension": 512,
+  "document_path": null,
+  "allow_update": true,
+  "n_results": 5
+}

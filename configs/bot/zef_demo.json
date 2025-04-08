@@ -1,7 +1,7 @@
 {
   "name": "Zef",
-  "prompt_template_path": "configs/prompt_templates/zef_completion.j2",
-  "llm_config": "configs/llm/Mixtral-8x7B-v01.json",
+  "prompt_template_path": "configs/prompt_templates/zef_instruct.j2",
+  "llm_config": "configs/llm/gpt-4o-mini.json",
   "gt_store_endpoint": "http://localhost:5000",
   "conversation_store_endpoint": "http://localhost:5001",
   "include_timestamp": true,
