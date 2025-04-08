@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 
@@ -26,10 +27,10 @@ class DiscordBot(discord.Client):
         self.logger.info(f"{self.user} has connected to Discord!")
 
     async def on_message(self, message: discord.Message):
-        self.logger.info(f"Received message: {message.content}")
         if message.author == self.user:
             return
         elif message.channel.name in self.discord_config["channels"]:
+            self.logger.info(f"Received message: {message.content}")
             if message.content == self.discord_config["clear_command"]:
                 self.conv_history.clear()
                 self.logger.info(
@@ -37,12 +38,15 @@ class DiscordBot(discord.Client):
                 )
                 await message.channel.send("[Conversation history cleared]")
             else:
-                prompt, response = self.chat_controller.make_response(
+                prompt, responses = self.chat_controller.make_response(
                     message.content, message.author.name, message.channel.name
                 )
                 self.logger.debug(f"Prompt: {prompt}")
-                self.logger.debug(f"Response: {response}")
-                await message.channel.send(response)
+                self.logger.debug(f"Responses: {responses}")
+                # only send next response once previous response is sent
+                for response in responses:
+                    await message.channel.send(response)
+                    await asyncio.sleep(1)
                 self.logger.debug(f"Sent response to channel {message.channel.name}")
 
     async def on_error(self, event_method, *args):
