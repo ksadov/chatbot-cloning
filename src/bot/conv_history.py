@@ -4,6 +4,7 @@ import pandas as pd
 import pyarrow as pa
 
 from src.bot.rag_module import RagModule
+from src.utils.local_logger import LocalLogger
 
 
 class Message:
@@ -46,7 +47,9 @@ class ConvHistory:
         max_char_length: int,
         update_chunk_length: int,
         rag_module: RagModule,
+        logger: LocalLogger,
     ):
+        self.logger = logger
         self.include_timestamp = include_timestamp
         self.history = []
         self.max_char_length = max_char_length
@@ -55,6 +58,7 @@ class ConvHistory:
         self.rag_module = rag_module
 
     def add(self, message: Message):
+        self.logger.debug(f"Adding message to history: {message}")
         self.history.append(message)
         self.trim_history()
 
@@ -64,6 +68,9 @@ class ConvHistory:
             self.removed_buffer.append(removed_msg)
             # When buffer reaches chunk size, trigger update
             if len(self.removed_buffer) >= self.update_chunk_length:
+                self.logger.debug(
+                    f"Triggering RAG module update because buffer size {len(self.removed_buffer)} >= {self.update_chunk_length}"
+                )
                 self._process_removed_buffer()
 
     def _process_removed_buffer(self):
@@ -73,6 +80,7 @@ class ConvHistory:
         chunk_str = self._buffer_to_string()
         self.removed_buffer = []
         if self.rag_module is not None:
+            self.logger.debug(f"Updating RAG module with chunk: {chunk_str}")
             self.rag_module.update(chunk_str)
         return chunk_str
 

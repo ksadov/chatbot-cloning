@@ -1,8 +1,8 @@
-from typing import Dict, Any
 from pathlib import Path
+from typing import Any, Dict
 
-from retrieval.embedding_core import EmbeddingStore
-from retrieval.local_embedding_store import LocalEmbeddingStore
+from src.retrieval.embedding_core import EmbeddingStore
+from src.retrieval.local_embedding_store import LocalEmbeddingStore
 
 
 class EmbeddingStoreFactory:

@@ -1,12 +1,16 @@
-from flask import Flask, request, jsonify
-import os
 import json
-from typing import Dict, Any
+import os
+from pathlib import Path
 
-from retrieval.embedding_factory import EmbeddingStoreFactory
+from flask import Flask, jsonify, request
+
+from src.retrieval.embedding_factory import EmbeddingStoreFactory
+from src.utils.local_logger import LocalLogger
 
 
-def create_flask_app(config_path: str):
+def create_flask_app(
+    config_path: str, log_dir: Path, console_log_level: str, file_log_level: str
+):
     """Create and configure the Flask application with API endpoints.
 
     Args:
@@ -26,12 +30,14 @@ def create_flask_app(config_path: str):
         config = json.load(f)
 
     # Create the embedding store
+    logger = LocalLogger(log_dir, "retrieval", console_log_level, file_log_level)
     embedding_store = EmbeddingStoreFactory.create_store(config)
 
     @app.route("/api/search", methods=["POST"])
     def search():
         data = request.json
         if not data or "query" not in data:
+            logger.error("Query is required")
             return jsonify({"error": "Query is required"}), 400
 
         query = data["query"]
@@ -39,14 +45,17 @@ def create_flask_app(config_path: str):
 
         try:
             results = embedding_store.search(query, n_results)
+            logger.info(f"Search results: {results}")
             return jsonify({"results": results})
         except Exception as e:
+            logger.error(f"Error searching: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/update", methods=["POST"])
     def update():
         data = request.json
         if not data or "document" not in data:
+            logger.error("Document is required")
             return jsonify({"error": "Document is required"}), 400
 
         try:
@@ -54,18 +63,23 @@ def create_flask_app(config_path: str):
             document = data["document"]
             success = embedding_store.update(document, metadata)
             if success:
+                logger.info("Update successful")
                 return jsonify({"status": "success"})
             else:
+                logger.error("Updates not allowed")
                 return jsonify({"error": "Updates not allowed"}), 403
         except Exception as e:
+            logger.error(f"Error updating: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/health", methods=["GET"])
     def health():
         try:
             status = embedding_store.health_check()
+            logger.info("Health check passed")
             return jsonify(status)
         except Exception as e:
+            logger.error(f"Health check failed: {e}")
             return jsonify({"status": "error", "error": str(e)}), 500
 
     return app

@@ -7,12 +7,19 @@ import torch
 from src.bot.conv_history import ConvHistory, Message
 from src.bot.llm import LLM
 from src.bot.rag_module import RagModule
+from src.utils.local_logger import LocalLogger
 
 
 class ChatController:
 
-    def __init__(self, bot_config_path: Path):
-        print("Setting up chatbot...")
+    def __init__(
+        self,
+        bot_config_path: Path,
+        log_dir: Path,
+        console_log_level: str,
+        file_log_level: str,
+    ):
+        self.logger = LocalLogger(log_dir, "chatbot", console_log_level, file_log_level)
         with open(bot_config_path, "r") as f:
             self.config = json.load(f)
         self.target_name = self.config["name"]
@@ -31,18 +38,23 @@ class ChatController:
         with open(self.config["llm_config"], "r") as f:
             self.llm_config = json.load(f)
         self.llm = LLM(
-            self.llm_config, self.config["prompt_template_path"], self.device
+            self.llm_config,
+            self.config["prompt_template_path"],
+            self.device,
+            self.logger,
         )
         self.conv_history = ConvHistory(
             self.config["include_timestamp"],
             self.config["max_conversation_length"],
             self.config["update_index_every"],
             self.conversation_rag_module if self.config["update_rag_index"] else None,
+            self.logger,
         )
 
     def make_response(
         self, query: str, speaker: str, conversation_name: str
     ) -> tuple[str, list[str]]:
+        self.logger.debug(f"Making response for query: {query}")
         query_timestamp = datetime.datetime.now()
         self.conv_history.add(
             Message(conversation_name, query_timestamp, speaker, query)
@@ -62,7 +74,7 @@ class ChatController:
         except Exception as e:
             gt_results = []
             conversation_results = []
-            print(f"Error retrieving documents: {e}")
+            self.logger.error(f"Error retrieving documents: {e}")
         prompt, responses = self.llm.chat_step(
             self.target_name,
             speaker,
@@ -71,6 +83,8 @@ class ChatController:
             conversation_results,
             self.config["include_timestamp"],
         )
+        self.logger.debug(f"Generated prompt: {prompt}")
+        self.logger.debug(f"Generated response: {responses}")
         # stagger response timestamps by 1 second
         response_timestamps = [
             query_timestamp + datetime.timedelta(seconds=i)

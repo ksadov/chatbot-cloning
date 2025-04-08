@@ -1,5 +1,7 @@
-from retrieval.api import create_flask_app
 import argparse
+from pathlib import Path
+
+from src.retrieval.api import create_flask_app
 
 
 def main():
@@ -18,10 +20,30 @@ def main():
         "--host", type=str, default="0.0.0.0", help="Host to run the server on"
     )
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
+    parser.add_argument(
+        "--log_dir",
+        type=Path,
+        help="Path to the log directory",
+        default="logs",
+    )
+    parser.add_argument(
+        "--console_log_level",
+        type=str,
+        help="Console log level",
+        default="INFO",
+    )
+    parser.add_argument(
+        "--file_log_level",
+        type=str,
+        help="File log level",
+        default="DEBUG",
+    )
 
     args = parser.parse_args()
 
-    app = create_flask_app(args.config)
+    app = create_flask_app(
+        args.config, args.log_dir, args.console_log_level, args.file_log_level
+    )
     app.run(debug=args.debug, host=args.host, port=args.port)
 
 

@@ -4,10 +4,18 @@ from typing import List, Optional, Tuple
 import requests
 
 from src.bot.conversation_prompt_formatter import ConversationPromptFormatter
+from src.utils.local_logger import LocalLogger
 
 
 class LLM:
-    def __init__(self, config: dict, prompt_template_path: Optional[Path], device: str):
+    def __init__(
+        self,
+        config: dict,
+        prompt_template_path: Optional[Path],
+        device: str,
+        logger: LocalLogger,
+    ):
+        self.logger = logger
         self.config = config
         self.model_name = self.config["model"]
         self.device = device
@@ -52,6 +60,7 @@ class LLM:
         return prompt, responses
 
     def make_instruct_request(self, prompt: str) -> str:
+        self.logger.debug(f"Making instruct request with prompt: {prompt}")
         is_anthropic = "claude" in self.model.lower() or "anthropic" in self.api_base
 
         headers = {"content-type": "application/json"}
@@ -77,6 +86,7 @@ class LLM:
             json=request_body,
         )
         response.raise_for_status()
+        self.logger.debug(f"LLM response: {response.json()}")
 
         is_messages_endpoint = "messages" in self.api_base
 
@@ -93,11 +103,14 @@ class LLM:
     def make_completion_request(
         self, prompt: str, name: str, chat_user_name: str
     ) -> str:
+        self.logger.debug(f"Making completion request with prompt: {prompt}")
         # use completion api: https://platform.openai.com/docs/api-reference/completions
         response = requests.post(
             self.api_base,
             headers={"Authorization": f"Bearer {self.api_key}"},
             json={"model": self.model, "prompt": prompt, **self.prompt_params},
         )
+        response.raise_for_status()
+        self.logger.debug(f"LLM response: {response.json()}")
         raw_response = response.json()["choices"][0]["text"]
         return raw_response

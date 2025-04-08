@@ -1,9 +1,9 @@
-import requests
 import asyncio
-from pathlib import Path
 import json
+from pathlib import Path
 from typing import List
 
+import requests
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
