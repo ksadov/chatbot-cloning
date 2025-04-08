@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from src.retrieval.api import create_flask_app
+from src.utils.local_logger import LocalLogger
 
 
 def main():
@@ -40,10 +41,10 @@ def main():
     )
 
     args = parser.parse_args()
-
-    app = create_flask_app(
-        args.config, args.log_dir, args.console_log_level, args.file_log_level
+    logger = LocalLogger(
+        args.log_dir, "retrieval_server", args.console_log_level, args.file_log_level
     )
+    app = create_flask_app(args.config, logger)
     app.run(debug=args.debug, host=args.host, port=args.port)
 
 

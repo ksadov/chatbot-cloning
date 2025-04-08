@@ -9,7 +9,8 @@ from src.utils.local_logger import LocalLogger
 
 
 def create_flask_app(
-    config_path: str, log_dir: Path, console_log_level: str, file_log_level: str
+    config_path: str,
+    logger: LocalLogger,
 ):
     """Create and configure the Flask application with API endpoints.
 
@@ -30,7 +31,6 @@ def create_flask_app(
         config = json.load(f)
 
     # Create the embedding store
-    logger = LocalLogger(log_dir, "retrieval", console_log_level, file_log_level)
     embedding_store = EmbeddingStoreFactory.create_store(config)
 
     @app.route("/api/search", methods=["POST"])

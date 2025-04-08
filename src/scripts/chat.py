@@ -37,7 +37,7 @@ def main():
         "-b",
         type=Path,
         help="Path to the config file",
-        default="configs/bot/zef_instruct.json",
+        default="configs/bot/zef_completion.json",
     )
     parser.add_argument(
         "--log_dir",

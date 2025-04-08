@@ -68,7 +68,7 @@ def make_output_tsv(
     return "\n".join(lines)
 
 
-def make_answer_tsv(
+def make_answer_file(
     gt_tsv_file: Path,
     config_path: Path,
     out_dir: Path,
@@ -184,7 +184,7 @@ def main():
     logger = LocalLogger(
         args.log_dir, "qa_eval", args.console_log_level, args.file_log_level
     )
-    make_answer_tsv(
+    make_answer_file(
         args.gt_tsv_file,
         args.config_path,
         args.out_dir,
