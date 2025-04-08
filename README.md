@@ -12,8 +12,8 @@ This code has been tested with with Python 3.9.13.
 1. Set your OpenAI key in:
   - `configs/embedding/text-embedding-3-small.json`
   - `configs/llm/gpt-4o-mini.json`
-2. `python -m src.scripts.serve_retrieval --config configs/zef_demo_gt.json --port 5000`
-3. In another terminal window: `python -m src.scripts.serve_retrieval --config configs/zef_demo_conv_history.json --port 5001`
+2. `python -m src.scripts.serve_retrieval --config configs/retrieval/zef_demo_gt.json --port 5000`
+3. In another terminal window: `python -m src.scripts.serve_retrieval --config configs/retrieval/zef_demo_conv_history.json --port 5001`
 4. In yet another window: `python -m src.scripts.chat --bot_config_path configs/bot/zef_demo.json`
 
 Step 4 will drop you into a command-line chat loop with a bot based on the contents of `data/zef.txt`. Read on to learn how to change your bot's source data, prompt, LLM backend and more.
