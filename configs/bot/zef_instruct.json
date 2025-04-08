@@ -4,7 +4,7 @@
   "llm_config": "configs/llm/claude-sonnet.json",
   "gt_store_endpoint": "http://localhost:5000",
   "conversation_store_endpoint": null,
-  "include_timestamp": false,
+  "include_timestamp": true,
   "query_context_depth": 3,
   "max_conversation_length": 16384,
   "update_index_every": 5,
