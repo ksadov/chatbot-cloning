@@ -54,9 +54,7 @@ class LLM:
             responses = [response]
         else:
             raw_response = self.make_completion_request(prompt, name, chat_user_name)
-            responses = self.conversation_formatter.cleanup_output(
-                raw_response, name, chat_user_name
-            )
+            responses = self.conversation_formatter.cleanup_output(raw_response, name)
         return prompt, responses
 
     def make_instruct_request(self, prompt: str) -> str:
