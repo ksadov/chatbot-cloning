@@ -69,8 +69,33 @@ class ConversationPromptFormatter:
 
         return "\n".join(result)
 
+    def trim_after_repetition(self, messages: List[str]) -> List[str]:
+        """
+        Trims a list of strings after the first repetition is detected.
+
+        Args:
+            messages (list): List of strings representing chat messages
+
+        Returns:
+            list: Trimmed list with repetitions removed
+        """
+        seen = set()
+        result = []
+
+        for message in messages:
+            if message in seen:
+                # Found a repetition, stop here
+                break
+
+            # Add the message to our results and mark it as seen
+            result.append(message)
+            seen.add(message)
+
+        return result
+
     def cleanup_output(self, output: str, target_name: str) -> list[str]:
         output_trimmed = self.trim_chat_after_other_user(output, target_name)
         # sometimes output is multiple messages, split by newlines with the prefix target_name
         output_trimmed = output_trimmed.split(f"{target_name}:")
+        output_trimmed = self.trim_after_repetition(output_trimmed)
         return output_trimmed
