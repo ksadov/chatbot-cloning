@@ -36,8 +36,8 @@ Once you've created your embedding model config you'll set its path as the value
 
 ### Retrieval config
 `configs/retrieval` contains examples of configs for the two types of vector store:
-- `configs/retrieval/zef.json` is a ground-truth store for the contents of the document `data/zef.txt`. It does not permit updates.
-- `configs/retrieval/new_conv_store.json` is a chatbot conversation store. It starts out empty and get updated with new messages over time.
+- `configs/retrieval/zef_demo_gt.json` is a ground-truth store for the contents of the document `data/zef.txt`. It does not permit updates.
+- `configs/retrieval/zef_demo_conv_history.json` is a chatbot conversation store. It starts out empty and get updated with new messages over time.
 
 If you want to use your own data, create a .txt file in the same format as `data/zef.txt`, with individual samples separated by the string `\n-----\n`.
 

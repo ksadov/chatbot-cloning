@@ -12,6 +12,7 @@ notes.txt
 
 configs/embedding/*
 !configs/embedding/text-embedding-3-small.json
+!configs/embedding/bge-large-en-v1.5.json
 configs/llm/*
 !configs/llm/gpt-4o-mini.json
 configs/bot/*
