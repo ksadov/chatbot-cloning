@@ -1,7 +1,5 @@
 This repository allows you to create a chatbot based on someone's writing that you can interact with over Discord or through the command line. You can read blog posts about earlier iterations of the codebase [here](https://www.ksadov.com/series/Chatbot%20Cloning.html).
 
-![arch_diagram.png]
-
 # Setup
 ## Environment
 This code has been tested with with Python 3.9.13.
