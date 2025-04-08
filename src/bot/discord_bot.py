@@ -26,20 +26,29 @@ class DiscordBot(discord.Client):
     async def on_ready(self):
         self.logger.info(f"{self.user} has connected to Discord!")
 
-    async def on_message(self, message: discord.Message):
+    def can_answer(self, message: discord.Message) -> bool:
+        is_dm = isinstance(message.channel, discord.DMChannel)
         if message.author == self.user:
-            return
-        elif message.channel.name in self.discord_config["channels"]:
+            return False
+        elif is_dm or message.channel.name in self.discord_config["channels"]:
+            print("can answer!")
+            return True
+        else:
+            return False
+
+    async def on_message(self, message: discord.Message):
+        if self.can_answer(message):
+            conversation_name = message.channel.id
             self.logger.info(f"Received message: {message.content}")
             if message.content == self.discord_config["clear_command"]:
                 self.conv_history.clear()
                 self.logger.info(
-                    f"Conversation history cleared for channel {message.channel.name}"
+                    f"Conversation history cleared for channel {conversation_name}"
                 )
                 await message.channel.send("[Conversation history cleared]")
             else:
                 prompt, responses = self.chat_controller.make_response(
-                    message.content, message.author.name, message.channel.name
+                    message.content, message.author.name, conversation_name
                 )
                 self.logger.debug(f"Prompt: {prompt}")
                 self.logger.debug(f"Responses: {responses}")
@@ -47,7 +56,7 @@ class DiscordBot(discord.Client):
                 for response in responses:
                     await message.channel.send(response)
                     await asyncio.sleep(1)
-                self.logger.debug(f"Sent response to channel {message.channel.name}")
+                self.logger.debug(f"Sent response to channel {conversation_name}")
 
     async def on_error(self, event_method, *args):
         self.logger.error(f"Error in event {event_method}: {args}")

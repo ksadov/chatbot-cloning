@@ -34,6 +34,7 @@ def main():
         "-f",
         type=str,
         help="File log level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default="INFO",
     )
     parser.add_argument(
@@ -41,11 +42,12 @@ def main():
         "-c",
         type=str,
         help="Console log level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default="INFO",
     )
     args = parser.parse_args()
     logger = LocalLogger(
-        args.log_dir, "discord_bot", args.file_log_level, args.console_log_level
+        args.log_dir, "discord_bot", args.console_log_level, args.file_log_level
     )
     discord_bot = DiscordBot(args.bot_config_path, args.discord_config_path, logger)
     discord_bot.run()
