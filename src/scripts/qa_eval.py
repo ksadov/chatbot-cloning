@@ -3,9 +3,10 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 from src.bot.chat_controller import ChatController
+from src.utils.local_logger import LocalLogger
 
 
 def get_tsv_qa_questions(gt_tsv_file: Path) -> Tuple[List[str], List[str], List[str]]:
@@ -71,17 +72,14 @@ def make_answer_tsv(
     gt_tsv_file: Path,
     config_path: Path,
     out_dir: Path,
-    console_log_level: str,
-    file_log_level: str,
+    logger: LocalLogger,
     show_prompt: bool,
     sleep_time: int,
     output_format: str,
 ):
     controller = ChatController(
         config_path,
-        log_dir=out_dir / "logs",
-        console_log_level=console_log_level,
-        file_log_level=file_log_level,
+        logger,
         qa_mode=True,
     )
     if gt_tsv_file.suffix == ".tsv":
@@ -175,13 +173,22 @@ def main():
         default="json",
         choices=["json", "tsv"],
     )
+    parser.add_argument(
+        "--log_dir",
+        "-l",
+        type=Path,
+        help="Log directory",
+        default="zef_eval/logs",
+    )
     args = parser.parse_args()
+    logger = LocalLogger(
+        args.log_dir, "qa_eval", args.console_log_level, args.file_log_level
+    )
     make_answer_tsv(
         args.gt_tsv_file,
         args.config_path,
         args.out_dir,
-        args.console_log_level,
-        args.file_log_level,
+        logger,
         args.show_prompt,
         args.sleep_time,
         args.output_format,

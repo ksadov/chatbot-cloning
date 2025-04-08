@@ -2,21 +2,15 @@ import argparse
 from pathlib import Path
 
 from src.bot.chat_controller import ChatController
+from src.utils.local_logger import LocalLogger
 
 
 def chat_loop(
     bot_config_path: Path,
     show_prompt: bool,
-    log_dir: Path,
-    console_log_level: str,
-    file_log_level: str,
+    logger: LocalLogger,
 ):
-    controller = ChatController(
-        bot_config_path,
-        log_dir,
-        console_log_level,
-        file_log_level,
-    )
+    controller = ChatController(bot_config_path, logger)
     while True:
         query = input("> ")
         if query == "exit":
@@ -67,13 +61,10 @@ def main():
         default="DEBUG",
     )
     args = parser.parse_args()
-    chat_loop(
-        args.bot_config_path,
-        args.show_prompt,
-        args.log_dir,
-        args.console_log_level,
-        args.file_log_level,
+    logger = LocalLogger(
+        args.log_dir, "chat", args.console_log_level, args.file_log_level
     )
+    chat_loop(args.bot_config_path, args.show_prompt, logger)
 
 
 if __name__ == "__main__":

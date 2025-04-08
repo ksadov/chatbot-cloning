@@ -13,14 +13,9 @@ from src.utils.local_logger import LocalLogger
 class ChatController:
 
     def __init__(
-        self,
-        bot_config_path: Path,
-        log_dir: Path,
-        console_log_level: str,
-        file_log_level: str,
-        qa_mode: bool = False,
+        self, bot_config_path: Path, logger: LocalLogger, qa_mode: bool = False
     ):
-        self.logger = LocalLogger(log_dir, "chatbot", console_log_level, file_log_level)
+        self.logger = logger
         self.qa_mode = qa_mode
         with open(bot_config_path, "r") as f:
             self.config = json.load(f)
