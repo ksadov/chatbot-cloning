@@ -14,6 +14,7 @@ from llama_index.core import (
 )
 from llama_index.vector_stores.faiss import FaissVectorStore
 
+from src.retrieval.documents import prep_txt_document
 from src.retrieval.embed_model import make_embed_model
 from src.retrieval.embedding_core import EmbeddingStore
 
@@ -68,7 +69,7 @@ class LocalEmbeddingStore(EmbeddingStore):
             if self.document_path is None:
                 documents = []
             elif str(self.document_path).endswith(".txt"):
-                documents = self._prep_txt_document(self.document_path)
+                documents = prep_txt_document(self.document_path)
             else:
                 raise ValueError(f"Unsupported document type: {self.document_path}")
 
@@ -81,22 +82,6 @@ class LocalEmbeddingStore(EmbeddingStore):
             index.storage_context.persist(persist_dir=self.index_path)
 
         return index
-
-    def _prep_txt_document(self, document_path, delimiter="\n-----\n"):
-        """
-        Prepare a text document for indexing by splitting it into chunks.
-
-        Args:
-            document_path: Path to the text document
-            delimiter: Delimiter to split the document by
-
-        Returns:
-            List of document chunks
-        """
-        with open(document_path, "r") as file:
-            full_document = file.read()
-        documents = full_document.split(delimiter)
-        return documents
 
     def search(
         self, query: str, n_results: Optional[int] = None

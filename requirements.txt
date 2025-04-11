@@ -6,3 +6,4 @@ llama-index-vector-stores-faiss
 discord.py
 matplotlib
 Jinja2
+pymilvus

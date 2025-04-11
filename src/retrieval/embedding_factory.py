@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 from src.retrieval.embedding_core import EmbeddingStore
 from src.retrieval.local_embedding_store import LocalEmbeddingStore
+from src.retrieval.zilliz_embedding_store import ZillizEmbeddingStore
 
 
 class EmbeddingStoreFactory:
@@ -36,6 +37,16 @@ class EmbeddingStoreFactory:
                 ),
                 allow_update=config.get("allow_update", True),
                 n_results=config.get("n_results", 5),
+            )
+        elif store_type == "zilliz":
+            return ZillizEmbeddingStore(
+                embedding_config_path=Path(config.get("embedding_config_path")),
+                uri=config.get("uri"),
+                token=config.get("token"),
+                collection_name=config.get("collection_name"),
+                dimension=config.get("vector_dimension"),
+                default_n_results=config.get("n_results"),
+                document_path=Path(config.get("document_path")),
             )
         else:
             raise ValueError(f"Unsupported embedding store type: {store_type}")
