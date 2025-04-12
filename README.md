@@ -70,3 +70,6 @@ When testing out bots, you may want to run different configurations on some stan
 - .tsv file containing columns representing author, question and response
 
 It will then output a json or tsv file (depending on command-line args) that allows you to compare generated answer to the specified ground-truth response.
+
+## Message database
+You can specify a database to save messages that the bots sends and receives via the `-db` argument to `src.scripts.chat` and `src.scripts.run_discord_bot`. This codebase only supports storing to a local SQLite database for now, see `configs/database/sqlite_example.json` for an example.
