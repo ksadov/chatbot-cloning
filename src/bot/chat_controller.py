@@ -52,17 +52,9 @@ class ChatController:
         )
         self.conv_history_dict = {}
 
-    def make_response(
-        self,
-        query: str,
-        speaker: str,
-        conversation_name: str,
-        platform: str,
-        platform_specific_sender_id: Optional[str] = None,
-        platform_specific_receiver_id: Optional[str] = None,
-    ) -> tuple[str, list[str]]:
-        if conversation_name not in self.conv_history_dict:
-            self.conv_history_dict[conversation_name] = ConvHistory(
+    def update_conv_history(self, message: Message):
+        if message.conversation not in self.conv_history_dict:
+            self.conv_history_dict[message.conversation] = ConvHistory(
                 self.config["include_timestamp"],
                 self.config["max_conversation_length"],
                 self.config["update_index_every"],
@@ -74,64 +66,33 @@ class ChatController:
                 self.logger,
                 self.qa_mode,
             )
-        self.logger.debug(f"Making response for query: {query}")
-        query_timestamp = datetime.datetime.now()
-        query_message = Message(
-            conversation_name,
-            query_timestamp,
-            speaker,
-            platform,
-            query,
-            self.config,
-            platform_specific_user_id=platform_specific_sender_id,
+        self.conv_history_dict[message.conversation].add(message)
+
+    def make_response(
+        self,
+        message: Message,
+    ) -> tuple[str, list[str]]:
+        if message.conversation not in self.conv_history_dict:
+            raise ValueError(f"Conversation {message.conversation} not found")
+        full_query = self.conv_history_dict[message.conversation].str_of_depth(
+            self.config["query_context_depth"]
         )
-        if self.database is not None:
-            self.database.store_message(query_message)
-        self.conv_history_dict[conversation_name].add(query_message)
-        try:
-            full_query = self.conv_history_dict[conversation_name].str_of_depth(
-                self.config["query_context_depth"]
-            )
-            if self.config["gt_store_endpoint"]:
-                gt_results = self.gt_rag_module.search(full_query)
-            else:
-                gt_results = []
-            if self.config["conversation_store_endpoint"]:
-                conversation_results = self.conversation_rag_module.search(full_query)
-            else:
-                conversation_results = []
-        except Exception as e:
+        if self.config["gt_store_endpoint"]:
+            gt_results = self.gt_rag_module.search(full_query)
+        else:
             gt_results = []
+        if self.config["conversation_store_endpoint"]:
+            conversation_results = self.conversation_rag_module.search(full_query)
+        else:
             conversation_results = []
-            self.logger.error(f"Error retrieving documents: {e}")
         prompt, responses = self.llm.chat_step(
             self.target_name,
-            speaker,
-            self.conv_history_dict[conversation_name],
+            message.sender_name,
+            self.conv_history_dict[message.conversation],
             gt_results,
             conversation_results,
             self.config["include_timestamp"],
         )
-        self.logger.debug(f"Generated prompt: {prompt}")
-        self.logger.debug(f"Generated response: {responses}")
-        # stagger response timestamps by 1 second
-        response_timestamps = [
-            query_timestamp + datetime.timedelta(seconds=i)
-            for i in range(len(responses))
-        ]
-        for response, response_timestamp in zip(responses, response_timestamps):
-            response_message = Message(
-                conversation_name,
-                response_timestamp,
-                self.config["name"],
-                platform,
-                response,
-                self.config,
-                platform_specific_user_id=platform_specific_sender_id,
-            )
-            if self.database is not None:
-                self.database.store_message(response_message)
-            self.conv_history_dict[conversation_name].add(response_message)
         return prompt, responses
 
     def emergency_save(self):

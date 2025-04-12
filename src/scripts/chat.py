@@ -1,7 +1,10 @@
 import argparse
+import datetime
+import json
 from pathlib import Path
 
 from src.bot.chat_controller import ChatController
+from src.bot.message import Message
 from src.utils.local_logger import LocalLogger
 
 
@@ -11,24 +14,39 @@ def chat_loop(
     logger: LocalLogger,
 ):
     controller = ChatController(bot_config_path, logger)
+    with open(bot_config_path, "r") as f:
+        config = json.load(f)
     while True:
         query = input("> ")
         if query == "exit":
             controller.emergency_save()
             break
-        prompt, responses = controller.make_response(
-            query,
-            "user",
-            "commandline_conversation",
-            "commandline",
+        message = Message(
+            conversation="commandline_conversation",
+            platform="commandline",
+            sender_name="user",
+            text_content=query,
+            timestamp=datetime.datetime.now(),
+            bot_config=config,
         )
+        controller.update_conv_history(message)
+        prompt, responses = controller.make_response(message)
         if show_prompt:
             print("------------------")
             print("PROMPT:")
             print(prompt)
             print("------------------")
         for response in responses:
+            message = Message(
+                conversation="commandline_conversation",
+                platform="commandline",
+                sender_name="bot",
+                text_content=response,
+                timestamp=datetime.datetime.now(),
+                bot_config=config,
+            )
             print(response)
+            controller.update_conv_history(message)
 
 
 def main():
