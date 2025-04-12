@@ -85,20 +85,12 @@ class ConvHistory:
         self.history = []
 
     def str_of_depth(self, depth: int) -> str:
-        if self.include_timestamp:
-            return "\n".join(
-                [
-                    f"[{message.timestamp.strftime('%Y-%m-%d %H:%M')}] {message.user_id}: {message.content}"
-                    for message in self.history[-depth:]
-                ]
-            )
-        else:
-            return "\n".join(
-                [
-                    f"{message.user_id}: {message.content}"
-                    for message in self.history[-depth:]
-                ]
-            )
+        return "\n".join(
+            [
+                message.rag_string(include_timestamp=self.include_timestamp)
+                for message in self.history[-depth:]
+            ]
+        )
 
     def __str__(self) -> str:
         return self.str_of_depth(len(self.history))

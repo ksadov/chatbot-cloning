@@ -17,7 +17,10 @@ def chat_loop(
             controller.emergency_save()
             break
         prompt, responses = controller.make_response(
-            query, controller.default_user_name, "conversation"
+            query,
+            "user",
+            "commandline_conversation",
+            "commandline",
         )
         if show_prompt:
             print("------------------")

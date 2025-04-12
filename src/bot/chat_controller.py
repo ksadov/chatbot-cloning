@@ -1,6 +1,7 @@
 import datetime
 import json
 from pathlib import Path
+from typing import Optional
 
 import torch
 
@@ -47,6 +48,9 @@ class ChatController:
         query: str,
         speaker: str,
         conversation_name: str,
+        platform: str,
+        platform_specific_sender_id: Optional[str] = None,
+        platform_specific_receiver_id: Optional[str] = None,
     ) -> tuple[str, list[str]]:
         if conversation_name not in self.conv_history_dict:
             self.conv_history_dict[conversation_name] = ConvHistory(
@@ -64,7 +68,15 @@ class ChatController:
         self.logger.debug(f"Making response for query: {query}")
         query_timestamp = datetime.datetime.now()
         self.conv_history_dict[conversation_name].add(
-            Message(conversation_name, query_timestamp, speaker, query)
+            Message(
+                conversation_name,
+                query_timestamp,
+                speaker,
+                platform,
+                query,
+                self.config,
+                platform_specific_user_id=platform_specific_sender_id,
+            )
         )
         try:
             full_query = self.conv_history_dict[conversation_name].str_of_depth(
@@ -100,7 +112,13 @@ class ChatController:
         for response, response_timestamp in zip(responses, response_timestamps):
             self.conv_history_dict[conversation_name].add(
                 Message(
-                    conversation_name, response_timestamp, self.config["name"], response
+                    conversation_name,
+                    response_timestamp,
+                    self.config["name"],
+                    platform,
+                    response,
+                    self.config,
+                    platform_specific_user_id=platform_specific_sender_id,
                 )
             )
         return prompt, responses
