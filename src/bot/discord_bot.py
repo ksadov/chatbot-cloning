@@ -94,7 +94,7 @@ class DiscordBot(discord.Client):
                 for response in responses:
                     await message.channel.send(response)
                     await asyncio.sleep(1)
-                self.logger.debug(f"Sent response to channel {message.channel.id}")
+                self.logger.info(f"Sent response to channel {message.channel.id}")
 
     async def on_error(self, event_method, *args):
         self.logger.error(f"Error in event {event_method}: {args}")

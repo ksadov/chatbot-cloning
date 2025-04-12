@@ -1,8 +1,20 @@
 import argparse
+import asyncio
 from pathlib import Path
 
 from src.bot.discord_bot import DiscordBot
 from src.utils.local_logger import LocalLogger
+
+
+async def run_bot(discord_bot):
+    try:
+        await discord_bot.start(discord_bot.discord_config["token"])
+    except KeyboardInterrupt:
+        print("\nReceived interrupt signal, shutting down...")
+    finally:
+        print("Exiting...")
+        await discord_bot.close()  # Properly close Discord connection
+        discord_bot.chat_controller.emergency_save()
 
 
 def main():
@@ -62,7 +74,12 @@ def main():
         args.database_config_path,
         logger,
     )
-    discord_bot.run()
+
+    # Replace discord_bot.run() with:
+    try:
+        asyncio.run(run_bot(discord_bot))
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
