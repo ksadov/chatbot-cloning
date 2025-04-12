@@ -8,18 +8,27 @@ import torch
 from src.bot.conv_history import ConvHistory, Message
 from src.bot.llm import LLM
 from src.bot.rag_module import RagModule
+from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 
 
 class ChatController:
 
     def __init__(
-        self, bot_config_path: Path, logger: LocalLogger, qa_mode: bool = False
+        self,
+        bot_config_path: Path,
+        logger: LocalLogger,
+        qa_mode: bool = False,
     ):
         self.logger = logger
         self.qa_mode = qa_mode
         with open(bot_config_path, "r") as f:
             self.config = json.load(f)
+        self.database_config_path = self.config.get("database_config", None)
+        if self.database_config_path is not None:
+            self.database = database_from_config_path(self.database_config_path)
+        else:
+            self.database = None
         self.target_name = self.config["name"]
         self.default_user_name = self.config["default_user_name"]
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -67,17 +76,18 @@ class ChatController:
             )
         self.logger.debug(f"Making response for query: {query}")
         query_timestamp = datetime.datetime.now()
-        self.conv_history_dict[conversation_name].add(
-            Message(
-                conversation_name,
-                query_timestamp,
-                speaker,
-                platform,
-                query,
-                self.config,
-                platform_specific_user_id=platform_specific_sender_id,
-            )
+        query_message = Message(
+            conversation_name,
+            query_timestamp,
+            speaker,
+            platform,
+            query,
+            self.config,
+            platform_specific_user_id=platform_specific_sender_id,
         )
+        if self.database is not None:
+            self.database.store_message(query_message)
+        self.conv_history_dict[conversation_name].add(query_message)
         try:
             full_query = self.conv_history_dict[conversation_name].str_of_depth(
                 self.config["query_context_depth"]
@@ -110,17 +120,18 @@ class ChatController:
             for i in range(len(responses))
         ]
         for response, response_timestamp in zip(responses, response_timestamps):
-            self.conv_history_dict[conversation_name].add(
-                Message(
-                    conversation_name,
-                    response_timestamp,
-                    self.config["name"],
-                    platform,
-                    response,
-                    self.config,
-                    platform_specific_user_id=platform_specific_sender_id,
-                )
+            response_message = Message(
+                conversation_name,
+                response_timestamp,
+                self.config["name"],
+                platform,
+                response,
+                self.config,
+                platform_specific_user_id=platform_specific_sender_id,
             )
+            if self.database is not None:
+                self.database.store_message(response_message)
+            self.conv_history_dict[conversation_name].add(response_message)
         return prompt, responses
 
     def emergency_save(self):

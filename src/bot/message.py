@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
@@ -24,6 +25,7 @@ class Message:
         server_nickname: Optional[str] = None,
         account_username: Optional[str] = None,
         attachments: Optional[Dict[str, str]] = None,
+        id: Optional[str] = None,
         platform_specific_message_id: Optional[str] = None,
         replies_to_message_id: Optional[str] = None,
         reactions: Optional[List[Reaction]] = None,
@@ -31,6 +33,7 @@ class Message:
         self.conversation = conversation
         self.timestamp = timestamp
         self.sender_name = sender_name
+        self.platform = platform
         self.platform_specific_user_id = platform_specific_user_id
         self.text_content = text_content
         self.bot_config = bot_config
@@ -41,6 +44,11 @@ class Message:
         self.platform_specific_message_id = platform_specific_message_id
         self.replies_to_message_id = replies_to_message_id
         self.reactions = reactions
+        self.id = (
+            platform_specific_message_id
+            if platform_specific_message_id
+            else str(uuid.uuid4())
+        )
 
     def __str__(self):
         return f"Message(conversation={self.conversation}, user_id={self.sender_name}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M')}, content={self.text_content})"

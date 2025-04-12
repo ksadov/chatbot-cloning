@@ -9,6 +9,8 @@ venv/
 data/*
 !data/zef.txt
 notes.txt
+*.db
+*.sqlite
 
 configs/embedding/*
 !configs/embedding/text-embedding-3-small.json
@@ -25,3 +27,5 @@ configs/discord/*
 configs/prompt_templates/*
 !configs/prompt_templates/zef_instruct.j2
 !configs/prompt_templates/zef_completion.j2
+configs/database/*
+!configs/database/sqlite_example.json
