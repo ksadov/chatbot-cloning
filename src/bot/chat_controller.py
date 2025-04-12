@@ -8,7 +8,6 @@ import torch
 from src.bot.conv_history import ConvHistory, Message
 from src.bot.llm import LLM
 from src.bot.rag_module import RagModule
-from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 
 
@@ -24,11 +23,6 @@ class ChatController:
         self.qa_mode = qa_mode
         with open(bot_config_path, "r") as f:
             self.config = json.load(f)
-        self.database_config_path = self.config.get("database_config", None)
-        if self.database_config_path is not None:
-            self.database = database_from_config_path(self.database_config_path)
-        else:
-            self.database = None
         self.target_name = self.config["name"]
         self.default_user_name = self.config["default_user_name"]
         self.device = "cuda" if torch.cuda.is_available() else "cpu"

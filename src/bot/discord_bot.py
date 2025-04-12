@@ -1,11 +1,13 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import Optional
 
 import discord
 
 from src.bot.chat_controller import ChatController
 from src.bot.message import Message
+from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 
 intents = discord.Intents.default()
@@ -14,21 +16,30 @@ intents.message_content = True
 
 class DiscordBot(discord.Client):
     def __init__(
-        self, llm_config_path: Path, discord_config_path: Path, logger: LocalLogger
+        self,
+        bot_config_path: Path,
+        discord_config_path: Path,
+        database_config_path: Optional[Path],
+        logger: LocalLogger,
     ):
         super().__init__(intents=intents)
         self.chat_controller = ChatController(
-            llm_config_path,
+            bot_config_path,
             logger,
         )
         self.discord_config = json.load(open(discord_config_path))
         self.logger = logger
+        self.database = (
+            database_from_config_path(database_config_path)
+            if database_config_path
+            else None
+        )
 
     async def on_ready(self):
         self.logger.info(f"{self.user} has connected to Discord!")
 
     def message_from_discord_message(self, message: discord.Message) -> Message:
-        return Message(
+        new_message = Message(
             conversation=message.channel.id,
             platform="discord",
             sender_name=message.author.name,
@@ -46,13 +57,16 @@ class DiscordBot(discord.Client):
             server_nickname=message.author.nick,
             account_username=message.author.name,
         )
+        if self.database:
+            self.database.store_message(new_message)
+            self.logger.debug(f"Message added to database: {new_message.id}")
+        return new_message
 
     def can_answer(self, message: discord.Message) -> bool:
         is_dm = isinstance(message.channel, discord.DMChannel)
         if message.author == self.user:
             return False
         elif is_dm or message.channel.name in self.discord_config["channels"]:
-            print("can answer!")
             return True
         else:
             return False

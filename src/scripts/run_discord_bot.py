@@ -23,6 +23,13 @@ def main():
         default="configs/discord/zef.json",
     )
     parser.add_argument(
+        "--database_config_path",
+        "-db",
+        type=Path,
+        help="Path to the database config file",
+        default=None,
+    )
+    parser.add_argument(
         "--log_dir",
         "-l",
         type=Path,
@@ -49,7 +56,12 @@ def main():
     logger = LocalLogger(
         args.log_dir, "discord_bot", args.console_log_level, args.file_log_level
     )
-    discord_bot = DiscordBot(args.bot_config_path, args.discord_config_path, logger)
+    discord_bot = DiscordBot(
+        args.bot_config_path,
+        args.discord_config_path,
+        args.database_config_path,
+        logger,
+    )
     discord_bot.run()
 
 
