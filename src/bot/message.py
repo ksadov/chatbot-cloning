@@ -15,7 +15,7 @@ class Message:
     def __init__(
         self,
         conversation: str,
-        timestamp: datetime.datetime,
+        timestamp: Optional[datetime.datetime],
         sender_name: str,
         platform: str,
         text_content: str,
@@ -51,10 +51,10 @@ class Message:
         )
 
     def __str__(self):
-        return f"Message(conversation={self.conversation}, user_id={self.sender_name}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M')}, content={self.text_content})"
+        return f"Message(conversation={self.conversation}, user_id={self.sender_name}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M') if self.timestamp else 'None'}, content={self.text_content})"
 
     def rag_string(self, include_timestamp: bool):
-        if include_timestamp:
+        if include_timestamp and self.timestamp:
             return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.sender_name}: {self.text_content}"
         else:
             return f"{self.sender_name}: {self.text_content}"

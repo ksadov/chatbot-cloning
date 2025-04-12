@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from src.bot.chat_controller import ChatController
+from src.bot.message import Message
 from src.utils.local_logger import LocalLogger
 
 
@@ -90,7 +91,16 @@ def make_answer_file(
         raise ValueError(f"Unsupported file type: {gt_tsv_file.suffix}")
     qa_responses = []
     for author, question in zip(qa_authors, qa_questions):
-        prompt, responses = controller.make_response(question, author, "conversation")
+        message = Message(
+            conversation="",
+            timestamp=None,
+            sender_name=author,
+            platform="",
+            text_content=question,
+            bot_config={},
+        )
+        controller.update_conv_history(message)
+        prompt, responses = controller.make_response(message)
         if show_prompt:
             print("prompt:", prompt)
         print("question:", question)
