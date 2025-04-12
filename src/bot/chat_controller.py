@@ -104,3 +104,9 @@ class ChatController:
                 )
             )
         return prompt, responses
+
+    def emergency_save(self):
+        for conversation_name in self.conv_history_dict:
+            if self.conversation_rag_module is not None:
+                self.logger.info("Saving conversations to rag module")
+                self.conv_history_dict[conversation_name].emergency_save()

@@ -39,6 +39,12 @@ class Message:
     def __str__(self):
         return f"Message(conversation={self.conversation}, user_id={self.user_id}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M')}, content={self.content})"
 
+    def rag_string(self, include_timestamp: bool):
+        if include_timestamp:
+            return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.user_id}: {self.content}"
+        else:
+            return f"{self.user_id}: {self.content}"
+
 
 class ConvHistory:
     def __init__(
@@ -90,21 +96,33 @@ class ConvHistory:
             self.rag_module.update(chunk_str)
         return chunk_str
 
+    def emergency_save(self):
+        """Save the current history to the rag module"""
+        if self.rag_module is not None:
+            self.logger.debug("Saving current history to RAG module")
+            # chunk current history into chunks of update_chunk_length
+            chunks = [
+                self.history[i : i + self.update_chunk_length]
+                for i in range(0, len(self.history), self.update_chunk_length)
+            ]
+            # reverse the chunks so older chunks are processed first
+            chunks.reverse()
+            for chunk in chunks:
+                chunk_str = "\n".join(
+                    [
+                        m.rag_string(include_timestamp=self.include_timestamp)
+                        for m in chunk
+                    ]
+                )
+                self.rag_module.update(chunk_str)
+
     def _buffer_to_string(self):
-        if self.include_timestamp:
-            return "\n".join(
-                [
-                    f"[{message.timestamp.strftime('%Y-%m-%d %H:%M')}] {message.user_id}: {message.content}"
-                    for message in self.removed_buffer
-                ]
-            )
-        else:
-            return "\n".join(
-                [
-                    f"{message.user_id}: {message.content}"
-                    for message in self.removed_buffer
-                ]
-            )
+        return "\n".join(
+            [
+                self.rag_string(message, include_timestamp=self.include_timestamp)
+                for message in self.removed_buffer
+            ]
+        )
 
     def clear(self):
         self.history = []

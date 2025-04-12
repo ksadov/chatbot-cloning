@@ -14,6 +14,7 @@ def chat_loop(
     while True:
         query = input("> ")
         if query == "exit":
+            controller.emergency_save()
             break
         prompt, responses = controller.make_response(
             query, controller.default_user_name, "conversation"
