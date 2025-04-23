@@ -7,6 +7,8 @@ import requests
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
+from src.retrieval.documents import EmbedDocument
+
 
 class RemoteEmbeddingModel(BaseEmbedding):
     model_name: str

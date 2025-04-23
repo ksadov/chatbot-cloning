@@ -14,7 +14,7 @@ from llama_index.core import (
 )
 from llama_index.vector_stores.faiss import FaissVectorStore
 
-from src.retrieval.documents import prep_txt_document
+from src.retrieval.documents import prep_parquet, prep_txt_document
 from src.retrieval.embed_model import make_embed_model
 from src.retrieval.embedding_core import EmbeddingStore
 
@@ -71,9 +71,12 @@ class LocalEmbeddingStore(EmbeddingStore):
             elif str(self.document_path).endswith(".txt"):
                 documents = prep_txt_document(self.document_path)
             else:
-                raise ValueError(f"Unsupported document type: {self.document_path}")
+                documents = prep_parquet(self.document_path)
 
-            documents = [Document(text=doc) for doc in documents]
+            documents = [
+                Document(text=doc.text, metadata=doc.metadata) for doc in documents
+            ]
+            print(f"Embedding {len(documents)} documents...")
             vector_store = FaissVectorStore(faiss_index=faiss_index)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
             index = VectorStoreIndex.from_documents(

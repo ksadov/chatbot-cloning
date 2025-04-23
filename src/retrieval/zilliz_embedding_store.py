@@ -11,7 +11,7 @@ from pymilvus import (
     utility,
 )
 
-from src.retrieval.documents import prep_txt_document
+from src.retrieval.documents import prep_parquet, prep_txt_document
 from src.retrieval.embed_model import make_embed_model
 from src.retrieval.embedding_core import EmbeddingStore
 
@@ -90,12 +90,12 @@ class ZillizEmbeddingStore(EmbeddingStore):
             # check if text file
             if self.document_path.suffix == ".txt":
                 documents = prep_txt_document(self.document_path)
-                print(f"Adding {len(documents)} documents to collection")
-                for document in documents:
-                    self.update(document)
-                print(f"Added {len(documents)} documents to collection")
             else:
-                raise ValueError(f"Unsupported document type: {self.document_path}")
+                documents = prep_parquet(self.document_path)
+            print(f"Adding {len(documents)} documents to collection")
+            for document in documents:
+                self.update(document)
+            print(f"Added {len(documents)} documents to collection")
 
     def search(
         self, query: str, n_results: Optional[int] = None
@@ -154,14 +154,14 @@ class ZillizEmbeddingStore(EmbeddingStore):
         """
         try:
             # Generate embedding
-            embedding = self.embed_model.get_text_embedding(document)
+            embedding = self.embed_model.get_text_embedding(document.text)
 
             # Prepare data
             data = {
                 "id": str(uuid.uuid4()),
                 "embedding": embedding,
-                "text": document,
-                "metadata": metadata,
+                "text": document.text,
+                "metadata": document.metadata,
             }
 
             # Insert into collection
