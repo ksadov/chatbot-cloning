@@ -10,6 +10,7 @@ from pymilvus import (
     connections,
     utility,
 )
+from tqdm import tqdm
 
 from src.retrieval.documents import prep_parquet, prep_txt_document
 from src.retrieval.embed_model import make_embed_model
@@ -93,7 +94,7 @@ class ZillizEmbeddingStore(EmbeddingStore):
             else:
                 documents = prep_parquet(self.document_path)
             print(f"Adding {len(documents)} documents to collection")
-            for document in documents:
+            for document in tqdm(documents):
                 self.update(document)
             print(f"Added {len(documents)} documents to collection")
 
