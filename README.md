@@ -39,7 +39,9 @@ Once you've created your embedding model config you'll set its path as the value
 - `configs/retrieval/zef_demo_gt.json` is a ground-truth store for the contents of the document `data/zef.txt`. It does not permit updates.
 - `configs/retrieval/zef_demo_conv_history.json` is a chatbot conversation store. It starts out empty and get updated with new messages over time.
 
-If you want to use your own data, create a .txt file in the same format as `data/zef.txt`, with individual samples separated by the string `\n-----\n`.
+If you want to use your own data, you can either:
+- create a .txt file in the same format as `data/zef.txt`, with individual samples separated by the string `\n-----\n`
+- create a parquet document (or folder of parquet documents) where each entry has the fields `text` (specifying the text to embed) and an optional dictionary field `meta` (specifying metadata associated with the entry)
 
 Once you have a retrieval config that you're satisfied with, you can serve it using `python -m src.scripts.serve_retrieval --config configs/retrieval/my_store.json`.
 
