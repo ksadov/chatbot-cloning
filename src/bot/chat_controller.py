@@ -86,6 +86,7 @@ class ChatController:
             gt_results,
             conversation_results,
             self.config["include_timestamp"],
+            message.conversation,
         )
         return prompt, responses
 

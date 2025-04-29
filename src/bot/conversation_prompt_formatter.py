@@ -18,6 +18,7 @@ class ConversationPromptFormatter:
         gt_results: List[str],
         conversation_results: List[str],
         include_timestamp: bool,
+        current_conversation_name: str,
     ) -> str:
         context = {
             "name": name,
@@ -28,6 +29,7 @@ class ConversationPromptFormatter:
             "timestamp": (
                 dt.now().strftime("%Y-%m-%d %H:%M") if include_timestamp else ""
             ),
+            "current_conversation_name": current_conversation_name,
         }
         return self.template.render(**context)
 

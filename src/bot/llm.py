@@ -39,6 +39,7 @@ class LLM:
         gt_results: List[str],
         conversation_results: List[str],
         include_timestamp: bool,
+        current_conversation_name: str,
     ) -> Tuple[str, List[str]]:
         prompt = self.conversation_formatter.make_query(
             name,
@@ -47,6 +48,7 @@ class LLM:
             gt_results,
             conversation_results,
             include_timestamp,
+            current_conversation_name,
         )
         if self.instruct:
             response = self.make_instruct_request(prompt)

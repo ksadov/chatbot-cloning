@@ -14,6 +14,15 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 
+def get_displayed_name(user: discord.Member) -> str:
+    if hasattr(user, "display_name"):
+        return user.display_name
+    elif hasattr(user, "global_name"):
+        return user.global_name
+    else:
+        return user.name
+
+
 class DiscordBot(discord.Client):
     def __init__(
         self,
@@ -39,25 +48,47 @@ class DiscordBot(discord.Client):
         self.logger.info(f"{self.user} has connected to Discord!")
 
     def message_from_discord_message(self, message: discord.Message) -> Message:
-        new_message = Message(
-            conversation=message.channel.id,
-            platform="discord",
-            sender_name=message.author.name,
-            text_content=message.content,
-            timestamp=message.created_at,
-            bot_config=self.discord_config,
-            platform_specific_message_id=message.id,
-            platform_specific_user_id=message.author.id,
-            global_user_id=message.author.id,
-            attachments=message.attachments,
-            replies_to_message_id=(
-                message.reference.message_id if message.reference else None
-            ),
-            reactions=message.reactions,
-            server_nickname=message.author.nick,
-            account_username=message.author.name,
-        )
+        if isinstance(message.channel, discord.DMChannel):
+            recipient_names = [
+                get_displayed_name(user) for user in message.channel.recipients
+            ]
+            if recipient_names:
+                chat_name = f"Discord DM with {', '.join(recipient_names)}"
+            else:
+                chat_name = "Discord DM"
+        else:
+            channel_name = message.channel.name
+            server_name = message.guild.name
+            chat_name = (
+                f"Discord conversation in channel {server_name} - {channel_name}"
+            )
+        try:
+            new_message = Message(
+                conversation=chat_name,
+                platform="discord",
+                sender_name=get_displayed_name(message.author),
+                text_content=message.content,
+                timestamp=message.created_at,
+                bot_config=self.discord_config,
+                platform_specific_message_id=message.id,
+                platform_specific_user_id=message.author.id,
+                global_user_id=message.author.id,
+                attachments=message.attachments,
+                replies_to_message_id=(
+                    message.reference.message_id if message.reference else None
+                ),
+                reactions=message.reactions,
+                server_nickname=(
+                    message.author.nick if hasattr(message.author, "nick") else None
+                ),
+                account_username=message.author.name,
+            )
+        except Exception as e:
+            print(f"Error making message from discord message: {e}")
+            print(f"Message: {message}")
+            raise e
         if self.database:
+            print(f"Storing message in database: {new_message.id}")
             self.database.store_message(new_message)
             self.logger.debug(f"Message added to database: {new_message.id}")
         return new_message
