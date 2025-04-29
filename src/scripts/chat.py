@@ -32,7 +32,7 @@ def chat_loop(
         message = Message(
             conversation="commandline_conversation",
             platform="commandline",
-            sender_name="user",
+            sender_name=config["default_user_name"],
             text_content=query,
             timestamp=datetime.datetime.now(),
             bot_config=config,
@@ -50,7 +50,7 @@ def chat_loop(
             message = Message(
                 conversation="commandline_conversation",
                 platform="commandline",
-                sender_name="bot",
+                sender_name=config["name"],
                 text_content=response,
                 timestamp=datetime.datetime.now(),
                 bot_config=config,
