@@ -76,8 +76,8 @@ class ConvHistory:
     def _buffer_to_string(self):
         return "\n".join(
             [
-                self.rag_string(message, include_timestamp=self.include_timestamp)
-                for message in self.removed_buffer
+                m.rag_string(include_timestamp=self.include_timestamp)
+                for m in self.removed_buffer
             ]
         )
 
