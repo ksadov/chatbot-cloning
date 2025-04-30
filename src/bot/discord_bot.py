@@ -113,7 +113,9 @@ class DiscordBot(discord.Client):
                 self.chat_controller.update_conv_history(user_message)
                 self.logger.info(f"Received message: {message.content}")
                 if message.content == self.discord_config["clear_command"]:
-                    self.conv_history.clear()
+                    self.chat_controller.conv_history_dict[
+                        user_message.conversation
+                    ].clear()
                     self.logger.info(
                         f"Conversation history cleared for channel {message.channel.id}"
                     )
