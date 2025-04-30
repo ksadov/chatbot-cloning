@@ -95,7 +95,7 @@ class ZillizEmbeddingStore(EmbeddingStore):
                 documents = prep_parquet(self.document_path)
             print(f"Adding {len(documents)} documents to collection")
             for document in tqdm(documents):
-                self.update(document)
+                self.update(document.text, document.metadata)
             print(f"Added {len(documents)} documents to collection")
 
     def search(
@@ -155,14 +155,14 @@ class ZillizEmbeddingStore(EmbeddingStore):
         """
         try:
             # Generate embedding
-            embedding = self.embed_model.get_text_embedding(document.text)
+            embedding = self.embed_model.get_text_embedding(document)
 
             # Prepare data
             data = {
                 "id": str(uuid.uuid4()),
                 "embedding": embedding,
-                "text": document.text,
-                "metadata": document.metadata,
+                "text": document,
+                "metadata": metadata,
             }
 
             # Insert into collection
