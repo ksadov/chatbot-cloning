@@ -103,29 +103,33 @@ class DiscordBot(discord.Client):
             return False
 
     async def on_message(self, message: discord.Message):
-        if message.author == self.user:
-            self_message = self.message_from_discord_message(message)
-            self.chat_controller.update_conv_history(self_message)
-            return
-        elif self.can_answer(message):
-            user_message = self.message_from_discord_message(message)
-            self.chat_controller.update_conv_history(user_message)
-            self.logger.info(f"Received message: {message.content}")
-            if message.content == self.discord_config["clear_command"]:
-                self.conv_history.clear()
-                self.logger.info(
-                    f"Conversation history cleared for channel {message.channel.id}"
-                )
-                await message.channel.send("[Conversation history cleared]")
-            else:
-                prompt, responses = self.chat_controller.make_response(user_message)
-                self.logger.debug(f"Prompt: {prompt}")
-                self.logger.debug(f"Responses: {responses}")
-                # only send next response once previous response is sent
-                for response in responses:
-                    await message.channel.send(response)
-                    await asyncio.sleep(1)
-                self.logger.info(f"Sent response to channel {message.channel.id}")
+        try:
+            if message.author == self.user:
+                self_message = self.message_from_discord_message(message)
+                self.chat_controller.update_conv_history(self_message)
+                return
+            elif self.can_answer(message):
+                user_message = self.message_from_discord_message(message)
+                self.chat_controller.update_conv_history(user_message)
+                self.logger.info(f"Received message: {message.content}")
+                if message.content == self.discord_config["clear_command"]:
+                    self.conv_history.clear()
+                    self.logger.info(
+                        f"Conversation history cleared for channel {message.channel.id}"
+                    )
+                    await message.channel.send("[Conversation history cleared]")
+                else:
+                    prompt, responses = self.chat_controller.make_response(user_message)
+                    self.logger.debug(f"Prompt: {prompt}")
+                    self.logger.debug(f"Responses: {responses}")
+                    # only send next response once previous response is sent
+                    for response in responses:
+                        await message.channel.send(response)
+                        await asyncio.sleep(1)
+                    self.logger.info(f"Sent response to channel {message.channel.id}")
+        except Exception as e:
+            self.logger.error(f"Error in on_message: {e}")
+            raise e
 
     async def on_error(self, event_method, *args):
         self.logger.error(f"Error in event {event_method}: {args}")
