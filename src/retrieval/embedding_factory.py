@@ -46,7 +46,11 @@ class EmbeddingStoreFactory:
                 collection_name=config.get("collection_name"),
                 dimension=config.get("vector_dimension"),
                 default_n_results=config.get("n_results"),
-                document_path=Path(config.get("document_path")),
+                document_path=(
+                    Path(config.get("document_path"))
+                    if config.get("document_path")
+                    else None
+                ),
             )
         else:
             raise ValueError(f"Unsupported embedding store type: {store_type}")
