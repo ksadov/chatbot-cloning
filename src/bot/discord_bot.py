@@ -103,8 +103,12 @@ class DiscordBot(discord.Client):
             return False
 
     async def on_message(self, message: discord.Message):
+        conv_clear_message = "[Conversation history cleared]"
         try:
-            if message.author == self.user:
+            if (
+                message.author == self.user
+                and not message.content == conv_clear_message
+            ):
                 self_message = self.message_from_discord_message(message)
                 self.chat_controller.update_conv_history(self_message)
                 return
@@ -119,7 +123,7 @@ class DiscordBot(discord.Client):
                     self.logger.info(
                         f"Conversation history cleared for channel {message.channel.id}"
                     )
-                    await message.channel.send("[Conversation history cleared]")
+                    await message.channel.send(conv_clear_message)
                 else:
                     prompt, responses = self.chat_controller.make_response(user_message)
                     self.logger.debug(f"Prompt: {prompt}")
@@ -127,7 +131,7 @@ class DiscordBot(discord.Client):
                     # only send next response once previous response is sent
                     for response in responses:
                         await message.channel.send(response)
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(0.5)
                     self.logger.info(f"Sent response to channel {message.channel.id}")
         except Exception as e:
             self.logger.error(f"Error in on_message: {e}")
