@@ -43,6 +43,7 @@ class DiscordBot(discord.Client):
             if database_config_path
             else None
         )
+        self.response_tasks = {}  # conversation_id -> asyncio.Task
 
     async def on_ready(self):
         self.logger.info(f"{self.user} has connected to Discord!")
@@ -130,25 +131,49 @@ class DiscordBot(discord.Client):
                 user_message = await self.message_from_discord_message(message)
                 self.chat_controller.update_conv_history(user_message)
                 self.logger.info(f"Received message: {message.content}")
-                if message.content == self.discord_config["clear_command"]:
-                    self.chat_controller.conv_history_dict[
-                        user_message.conversation
-                    ].clear()
+
+                conversation_id = user_message.conversation
+
+                # Cancel any previous response task for this conversation
+                prev_task = self.response_tasks.get(conversation_id)
+                if prev_task and not prev_task.done():
+                    prev_task.cancel()
                     self.logger.info(
-                        f"Conversation history cleared for channel {message.channel.id}"
+                        f"Cancelled previous response for {conversation_id}"
                     )
-                    await message.channel.send(conv_clear_message)
-                else:
-                    prompt, responses = self.chat_controller.make_response(user_message)
-                    self.logger.debug(f"Prompt: {prompt}")
-                    self.logger.debug(f"Responses: {responses}")
-                    # only send next response once previous response is sent
-                    for response in responses:
-                        await message.channel.send(response)
-                        await asyncio.sleep(0.5)
-                    self.logger.info(f"Sent response to channel {message.channel.id}")
+
+                # Start a new response task
+                task = asyncio.create_task(
+                    self.handle_response(message, user_message, conv_clear_message)
+                )
+                self.response_tasks[conversation_id] = task
+
         except Exception as e:
             self.logger.error(f"Error in on_message: {e}")
+            raise e
+
+    async def handle_response(self, message, user_message, conv_clear_message):
+        try:
+            if message.content == self.discord_config["clear_command"]:
+                self.chat_controller.conv_history_dict[
+                    user_message.conversation
+                ].clear()
+                self.logger.info(
+                    f"Conversation history cleared for channel {message.channel.id}"
+                )
+                await message.channel.send(conv_clear_message)
+            else:
+                prompt, responses = self.chat_controller.make_response(user_message)
+                self.logger.debug(f"Prompt: {prompt}")
+                self.logger.debug(f"Responses: {responses}")
+                for response in responses:
+                    await message.channel.send(response)
+                    await asyncio.sleep(0.5)
+                self.logger.info(f"Sent response to channel {message.channel.id}")
+        except asyncio.CancelledError:
+            self.logger.info(f"Response task cancelled for {user_message.conversation}")
+        except Exception as e:
+            self.logger.error(f"Error in handle_response: {e}")
             raise e
 
     async def on_error(self, event_method, *args):
