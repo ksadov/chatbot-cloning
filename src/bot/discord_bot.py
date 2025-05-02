@@ -47,7 +47,16 @@ class DiscordBot(discord.Client):
     async def on_ready(self):
         self.logger.info(f"{self.user} has connected to Discord!")
 
-    def message_from_discord_message(self, message: discord.Message) -> Message:
+    async def get_referenced_message(self, message: discord.Message) -> discord.Message:
+        if message.reference:
+            if message.reference.cached_message:
+                return message.reference.cached_message
+            else:
+                return await message.channel.fetch_message(message.reference.message_id)
+        else:
+            return None
+
+    async def message_from_discord_message(self, message: discord.Message) -> Message:
         if isinstance(message.channel, discord.DMChannel):
             recipient_names = [
                 get_displayed_name(user) for user in message.channel.recipients
@@ -62,12 +71,17 @@ class DiscordBot(discord.Client):
             chat_name = (
                 f"Discord conversation in channel {server_name} - {channel_name}"
             )
+        referenced_message = await self.get_referenced_message(message)
+        if referenced_message:
+            text_content = f"[Replying to {referenced_message.author.name}: {referenced_message.content}]\n\n{message.content}"
+        else:
+            text_content = message.content
         try:
             new_message = Message(
                 conversation=chat_name,
                 platform="discord",
                 sender_name=get_displayed_name(message.author),
-                text_content=message.content,
+                text_content=text_content,
                 timestamp=message.created_at,
                 bot_config=self.discord_config,
                 platform_specific_message_id=message.id,
@@ -84,11 +98,11 @@ class DiscordBot(discord.Client):
                 account_username=message.author.name,
             )
         except Exception as e:
-            print(f"Error making message from discord message: {e}")
-            print(f"Message: {message}")
+            self.logger.error(f"Error making message from discord message: {e}")
+            self.logger.error(f"Message: {message}")
             raise e
         if self.database:
-            print(f"Storing message in database: {new_message.id}")
+            self.logger.debug(f"Storing message in database: {new_message.id}")
             self.database.store_message(new_message)
             self.logger.debug(f"Message added to database: {new_message.id}")
         return new_message
@@ -109,11 +123,11 @@ class DiscordBot(discord.Client):
                 message.author == self.user
                 and not message.content == conv_clear_message
             ):
-                self_message = self.message_from_discord_message(message)
+                self_message = await self.message_from_discord_message(message)
                 self.chat_controller.update_conv_history(self_message)
                 return
             elif self.can_answer(message):
-                user_message = self.message_from_discord_message(message)
+                user_message = await self.message_from_discord_message(message)
                 self.chat_controller.update_conv_history(user_message)
                 self.logger.info(f"Received message: {message.content}")
                 if message.content == self.discord_config["clear_command"]:
