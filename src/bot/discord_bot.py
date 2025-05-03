@@ -6,7 +6,7 @@ from typing import Optional
 import discord
 
 from src.bot.chat_controller import ChatController
-from src.bot.message import Message
+from src.bot.message import Message, ReactionMessage
 from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 
@@ -21,6 +21,27 @@ def get_displayed_name(user: discord.Member) -> str:
         return user.global_name
     else:
         return user.name
+
+
+def get_chat_name(
+    message: discord.Message, user: Optional[discord.Member] = None
+) -> str:
+    if isinstance(message.channel, discord.DMChannel):
+        if user:
+            recipient_names = [get_displayed_name(user)]
+        else:
+            recipient_names = [
+                get_displayed_name(user) for user in message.channel.recipients
+            ]
+        if recipient_names:
+            chat_name = f"Discord DM with {', '.join(recipient_names)}"
+        else:
+            chat_name = "Discord DM"
+    else:
+        channel_name = message.channel.name
+        server_name = message.guild.name
+        chat_name = f"Discord conversation in channel {server_name} - {channel_name}"
+    return chat_name
 
 
 class DiscordBot(discord.Client):
@@ -58,20 +79,6 @@ class DiscordBot(discord.Client):
             return None
 
     async def message_from_discord_message(self, message: discord.Message) -> Message:
-        if isinstance(message.channel, discord.DMChannel):
-            recipient_names = [
-                get_displayed_name(user) for user in message.channel.recipients
-            ]
-            if recipient_names:
-                chat_name = f"Discord DM with {', '.join(recipient_names)}"
-            else:
-                chat_name = "Discord DM"
-        else:
-            channel_name = message.channel.name
-            server_name = message.guild.name
-            chat_name = (
-                f"Discord conversation in channel {server_name} - {channel_name}"
-            )
         referenced_message = await self.get_referenced_message(message)
         if referenced_message:
             text_content = f"[Replying to {referenced_message.author.name}: {referenced_message.content}]\n\n{message.content}"
@@ -79,7 +86,7 @@ class DiscordBot(discord.Client):
             text_content = message.content
         try:
             new_message = Message(
-                conversation=chat_name,
+                conversation=get_chat_name(message, message.author),
                 platform="discord",
                 sender_name=get_displayed_name(message.author),
                 text_content=text_content,
@@ -175,6 +182,61 @@ class DiscordBot(discord.Client):
         except Exception as e:
             self.logger.error(f"Error in handle_response: {e}")
             raise e
+
+    async def handle_reaction(self, payload):
+        try:
+            removed = payload.event_type == "REACTION_REMOVE"
+            reaction_author = await self.fetch_user(payload.user_id)
+            original_message_author = await self.fetch_user(payload.message_author_id)
+            print("channel id", payload.channel_id)
+            channel = self.get_channel(payload.channel_id)
+            if channel:
+                original_discord_message = await channel.fetch_message(
+                    payload.message_id
+                )
+            else:
+                # we are in a dm
+                # this breaks for removing reacts in dms unfortunately
+                # so we may want to move to using on_reaction_add and on_reaction_remove
+                # instead of on_raw_reaction_add and on_raw_reaction_remove
+                target = (
+                    original_message_author
+                    if not original_message_author == self.user
+                    else reaction_author
+                )
+                dm_channel = await self.create_dm(target)
+                original_discord_message = await dm_channel.fetch_message(
+                    payload.message_id
+                )
+            original_message = await self.message_from_discord_message(
+                original_discord_message
+            )
+            reaction_author = await self.fetch_user(payload.user_id)
+            reaction_author_name = get_displayed_name(reaction_author)
+            chat_name = get_chat_name(original_discord_message)
+            reaction_message = ReactionMessage(
+                conversation=chat_name,
+                timestamp=original_discord_message.created_at,
+                original_message=original_message,
+                removed=removed,
+                sender_name=reaction_author_name,
+                platform="discord",
+                reaction=payload.emoji.name,
+                bot_config=self.discord_config,
+                platform_specific_user_id=reaction_author.id,
+            )
+            self.chat_controller.update_conv_history(reaction_message)
+        except Exception as e:
+            self.logger.error(f"Error in handle_reaction: {e}")
+            raise e
+
+    async def on_raw_reaction_add(self, payload):
+        await self.handle_reaction(payload)
+        self.logger.info(f"Reaction added: {payload}")
+
+    async def on_raw_reaction_remove(self, payload):
+        await self.handle_reaction(payload)
+        self.logger.info(f"Reaction removed: {payload}")
 
     async def on_error(self, event_method, *args):
         self.logger.error(f"Error in event {event_method}: {args}")

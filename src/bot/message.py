@@ -58,3 +58,42 @@ class Message:
             return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.sender_name}: {self.text_content}"
         else:
             return f"{self.sender_name}: {self.text_content}"
+
+
+class ReactionMessage(Message):
+    def __init__(
+        self,
+        conversation: str,
+        timestamp: Optional[datetime.datetime],
+        original_message: Message,
+        removed: bool,
+        sender_name: str,
+        platform: str,
+        reaction: str,
+        bot_config: Dict[str, str],
+        platform_specific_user_id: Optional[str] = None,
+        global_user_id: Optional[str] = None,
+        server_nickname: Optional[str] = None,
+        account_username: Optional[str] = None,
+    ):
+        if removed:
+            text_content = f"[Removed reaction {reaction} from {original_message.rag_string(False)}]"
+        else:
+            text_content = (
+                f"[Reacted with {reaction} to {original_message.rag_string(False)}]"
+            )
+        super().__init__(
+            conversation,
+            timestamp,
+            sender_name,
+            platform,
+            text_content,
+            bot_config,
+            platform_specific_user_id,
+            global_user_id,
+            server_nickname,
+            account_username,
+        )
+
+    def __str__(self):
+        return f"ReactionMessage(conversation={self.conversation}, user_id={self.sender_name}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M') if self.timestamp else 'None'}, content={self.text_content})"
