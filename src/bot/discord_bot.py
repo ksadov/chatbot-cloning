@@ -23,11 +23,16 @@ def get_displayed_name(user: discord.Member) -> str:
         return user.name
 
 
-def get_chat_name(message: discord.Message) -> str:
+def get_chat_name(
+    message: discord.Message, user: Optional[discord.Member] = None
+) -> str:
     if isinstance(message.channel, discord.DMChannel):
-        recipient_names = [
-            get_displayed_name(user) for user in message.channel.recipients
-        ]
+        if user:
+            recipient_names = [get_displayed_name(user)]
+        else:
+            recipient_names = [
+                get_displayed_name(user) for user in message.channel.recipients
+            ]
         if recipient_names:
             chat_name = f"Discord DM with {', '.join(recipient_names)}"
         else:
@@ -81,7 +86,7 @@ class DiscordBot(discord.Client):
             text_content = message.content
         try:
             new_message = Message(
-                conversation=get_chat_name(message),
+                conversation=get_chat_name(message, message.author),
                 platform="discord",
                 sender_name=get_displayed_name(message.author),
                 text_content=text_content,
@@ -181,17 +186,36 @@ class DiscordBot(discord.Client):
     async def handle_reaction(self, payload):
         try:
             removed = payload.event_type == "REACTION_REMOVE"
+            reaction_author = await self.fetch_user(payload.user_id)
+            original_message_author = await self.fetch_user(payload.message_author_id)
             print("channel id", payload.channel_id)
             channel = self.get_channel(payload.channel_id)
-            print("channel", channel)
-            original_discord_message = await channel.fetch_message(payload.message_id)
+            if channel:
+                original_discord_message = await channel.fetch_message(
+                    payload.message_id
+                )
+            else:
+                # we are in a dm
+                # this breaks for removing reacts in dms unfortunately
+                # so we may want to move to using on_reaction_add and on_reaction_remove
+                # instead of on_raw_reaction_add and on_raw_reaction_remove
+                target = (
+                    original_message_author
+                    if not original_message_author == self.user
+                    else reaction_author
+                )
+                dm_channel = await self.create_dm(target)
+                original_discord_message = await dm_channel.fetch_message(
+                    payload.message_id
+                )
             original_message = await self.message_from_discord_message(
                 original_discord_message
             )
             reaction_author = await self.fetch_user(payload.user_id)
             reaction_author_name = get_displayed_name(reaction_author)
+            chat_name = get_chat_name(original_discord_message)
             reaction_message = ReactionMessage(
-                conversation=get_chat_name(original_discord_message),
+                conversation=chat_name,
                 timestamp=original_discord_message.created_at,
                 original_message=original_message,
                 removed=removed,
