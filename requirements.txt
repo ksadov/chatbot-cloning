@@ -1,4 +1,3 @@
-torch
 transformers
 llama_index
 llama-index-embeddings-huggingface
@@ -7,3 +6,6 @@ discord.py
 matplotlib
 Jinja2
 pymilvus
+flask
+faiss
+faiss-cpu
