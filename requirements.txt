@@ -1,9 +1,6 @@
-torch
-transformers
 llama_index
-llama-index-embeddings-huggingface
-llama-index-vector-stores-faiss
 discord.py
 matplotlib
 Jinja2
 pymilvus
+flask

@@ -12,13 +12,11 @@ class LLM:
         self,
         config: dict,
         prompt_template_path: Optional[Path],
-        device: str,
         logger: LocalLogger,
     ):
         self.logger = logger
         self.config = config
         self.model_name = self.config["model"]
-        self.device = device
         self.instruct = self.config["instruct"]
         self.api_base = self.config["api_base"]
         self.api_key = self.config["api_key"]
