@@ -1,9 +1,5 @@
-import datetime
 import json
 from pathlib import Path
-from typing import Optional
-
-import torch
 
 from src.bot.conv_history import ConvHistory, Message
 from src.bot.llm import LLM
@@ -25,7 +21,6 @@ class ChatController:
             self.config = json.load(f)
         self.target_name = self.config["name"]
         self.default_user_name = self.config["default_user_name"]
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.gt_rag_module = (
             RagModule(self.config["gt_store_endpoint"])
             if self.config["gt_store_endpoint"]
@@ -41,7 +36,6 @@ class ChatController:
         self.llm = LLM(
             self.llm_config,
             self.config["prompt_template_path"],
-            self.device,
             self.logger,
         )
         self.conv_history_dict = {}
