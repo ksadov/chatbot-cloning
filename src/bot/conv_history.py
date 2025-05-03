@@ -12,6 +12,7 @@ class ConvHistory:
         rag_module: RagModule,
         logger: LocalLogger,
         qa_mode: bool,
+        conv_title: str,
     ):
         self.logger = logger
         self.include_timestamp = include_timestamp
@@ -21,6 +22,7 @@ class ConvHistory:
         self.removed_buffer = []
         self.rag_module = rag_module
         self.qa_mode = qa_mode
+        self.conv_title = conv_title
 
     def add(self, message: Message):
         self.logger.debug(f"Adding message to history: {message}")
@@ -65,21 +67,17 @@ class ConvHistory:
             # reverse the chunks so older chunks are processed first
             chunks.reverse()
             for chunk in chunks:
-                chunk_str = "\n".join(
-                    [
-                        m.rag_string(include_timestamp=self.include_timestamp)
-                        for m in chunk
-                    ]
-                )
+                chunk_str = self.stringify_with_title(chunk)
                 self.rag_module.update(chunk_str)
 
     def _buffer_to_string(self):
-        return "\n".join(
-            [
-                m.rag_string(include_timestamp=self.include_timestamp)
-                for m in self.removed_buffer
-            ]
+        return self.stringify_with_title(self.removed_buffer)
+
+    def stringify_with_title(self, messages: list[Message]) -> str:
+        message_str = "\n".join(
+            [m.rag_string(include_timestamp=self.include_timestamp) for m in messages]
         )
+        return f"{self.conv_title}\n\n{message_str}"
 
     def clear(self):
         self.history = []

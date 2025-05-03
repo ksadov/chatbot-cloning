@@ -59,6 +59,7 @@ class ChatController:
                 ),
                 self.logger,
                 self.qa_mode,
+                message.conversation,
             )
         self.conv_history_dict[message.conversation].add(message)
 
