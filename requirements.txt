@@ -7,5 +7,4 @@ matplotlib
 Jinja2
 pymilvus
 flask
-faiss
 faiss-cpu
