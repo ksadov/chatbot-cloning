@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 from src.retrieval.embedding_core import EmbeddingStore
-from src.retrieval.local_embedding_store import LocalEmbeddingStore
 from src.retrieval.zilliz_embedding_store import ZillizEmbeddingStore
 
 
@@ -26,18 +25,7 @@ class EmbeddingStoreFactory:
         store_type = config.get("type", "local")
 
         if store_type == "local":
-            return LocalEmbeddingStore(
-                index_path=Path(config.get("index_path", ".vector_store/index")),
-                embedding_config_path=Path(config.get("embedding_config_path")),
-                vector_dimension=config.get("vector_dimension", 1024),
-                document_path=(
-                    Path(config.get("document_path"))
-                    if config.get("document_path")
-                    else None
-                ),
-                allow_update=config.get("allow_update", True),
-                n_results=config.get("n_results", 5),
-            )
+            raise ValueError("Lite deploy branch only supports remote embedding store")
         elif store_type == "zilliz":
             return ZillizEmbeddingStore(
                 embedding_config_path=Path(config.get("embedding_config_path")),

@@ -5,9 +5,6 @@ from typing import List
 
 import requests
 from llama_index.core.embeddings import BaseEmbedding
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-
-from src.retrieval.documents import EmbedDocument
 
 
 class RemoteEmbeddingModel(BaseEmbedding):
@@ -61,4 +58,4 @@ def make_embed_model(config_path: Path) -> BaseEmbedding:
             config["params"],
         )
     else:
-        return HuggingFaceEmbedding(model_name=config["model_name"])
+        raise ValueError("Lite deploy branch only supports remote embedding models")
