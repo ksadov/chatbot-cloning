@@ -23,12 +23,10 @@ def get_displayed_name(user: discord.Member) -> str:
         return user.name
 
 
-def get_chat_name(
-    message: discord.Message, user: Optional[discord.Member] = None
-) -> str:
+def get_chat_name(message: discord.Message) -> str:
     if isinstance(message.channel, discord.DMChannel):
-        if user:
-            recipient_names = [get_displayed_name(user)]
+        if message.channel.recipient:
+            recipient_names = [get_displayed_name(message.channel.recipient)]
         else:
             recipient_names = [
                 get_displayed_name(user) for user in message.channel.recipients
@@ -86,7 +84,7 @@ class DiscordBot(discord.Client):
             text_content = message.content
         try:
             new_message = Message(
-                conversation=get_chat_name(message, message.author),
+                conversation=get_chat_name(message),
                 platform="discord",
                 sender_name=get_displayed_name(message.author),
                 text_content=text_content,
