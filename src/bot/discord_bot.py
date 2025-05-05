@@ -6,6 +6,7 @@ from typing import Optional
 import discord
 
 from src.bot.chat_controller import ChatController
+from src.bot.llm import TextResponse, ToolCallResponse
 from src.bot.message import Message, ReactionMessage
 from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
@@ -157,6 +158,36 @@ class DiscordBot(discord.Client):
             self.logger.error(f"Error in on_message: {e}")
             raise e
 
+    async def discord_message_from_snippet(
+        self, snippet: str, current_channel: discord.TextChannel
+    ) -> Optional[discord.Message]:
+        async for message in current_channel.history(limit=100):
+            if snippet in message.content:
+                return message
+        return None
+
+    async def communication_tool_call(
+        self, message, user_message, tool_call: ToolCallResponse
+    ):
+        if tool_call.tool_call_name == "react":
+            message_for_reaction = await self.discord_message_from_snippet(
+                tool_call.tool_call_args["identifying_substring"],
+                message.channel,
+            )
+            if message_for_reaction:
+                await message_for_reaction.add_reaction(
+                    tool_call.tool_call_args["reaction"]
+                )
+                self.logger.info(
+                    f"Added reaction {tool_call.tool_call_args['reaction']} to message {message_for_reaction.id}"
+                )
+        elif tool_call.tool_call_name == "message":
+            await message.channel.send(tool_call.tool_call_args["message_content"])
+        elif tool_call.tool_call_name == "do_nothing":
+            pass
+        else:
+            self.logger.error(f"Unknown tool call: {tool_call.tool_call_name}")
+
     async def handle_response(self, message, user_message, conv_clear_message):
         try:
             if message.content == self.discord_config["clear_command"]:
@@ -171,9 +202,15 @@ class DiscordBot(discord.Client):
                 prompt, responses = self.chat_controller.make_response(user_message)
                 self.logger.debug(f"Prompt: {prompt}")
                 self.logger.debug(f"Responses: {responses}")
-                for response in responses:
-                    await message.channel.send(response)
-                    await asyncio.sleep(0.5)
+                if isinstance(responses[0], TextResponse):
+                    for response in responses:
+                        await message.channel.send(response.text)
+                        await asyncio.sleep(0.5)
+                elif isinstance(responses[0], ToolCallResponse):
+                    for response in responses:
+                        await self.communication_tool_call(
+                            message, user_message, response
+                        )
                 self.logger.info(f"Sent response to channel {message.channel.id}")
         except asyncio.CancelledError:
             self.logger.info(f"Response task cancelled for {user_message.conversation}")
