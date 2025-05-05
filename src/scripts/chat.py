@@ -72,10 +72,10 @@ def chat_loop(
                     timestamp=datetime.datetime.now(),
                     bot_config=config,
                 )
+                controller.update_conv_history(message)
                 if database:
                     database.store_message(message)
             print(text_content)
-            controller.update_conv_history(message)
 
 
 def main():
