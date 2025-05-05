@@ -104,18 +104,18 @@ class LLM:
 
         if tools:
             if is_messages_endpoint:
-                tool_choice_str = "any"
+                tool_choice = {"type": "any"}
                 formatted_tool_dicts = [
                     tool.message_api_representation() for tool in tools
                 ]
             else:
-                tool_choice_str = "required"
+                tool_choice = "required"
                 formatted_tool_dicts = [
                     tool.completion_api_representation() for tool in tools
                 ]
 
             request_body["tools"] = formatted_tool_dicts
-            request_body["tool_choice"] = tool_choice_str
+            request_body["tool_choice"] = tool_choice
 
         response = requests.post(
             self.api_base,
@@ -127,7 +127,17 @@ class LLM:
 
         try:
             if is_messages_endpoint:
-                results = response.json()["content"][0]["text"]
+                content = response.json()["content"][0]
+                if tools:
+                    results = [
+                        ToolCallResponse(
+                            tool_call_id=content["id"],
+                            tool_call_name=content["name"],
+                            tool_call_args=content["input"],
+                        )
+                    ]
+                else:
+                    results = TextResponse(text=content["text"])
             else:
                 if tools:
                     raw_results = response.json()["choices"][0]["message"]["tool_calls"]

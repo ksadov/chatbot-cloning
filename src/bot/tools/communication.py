@@ -11,7 +11,12 @@ class Property(pydantic.BaseModel):
 
 
 def input_schema_dict(properties: List[Property], required: List[str]) -> dict:
-    properties_dict = {property.name: property.model_dump() for property in properties}
+    properties_dict = {}
+    for property in properties:
+        properties_dict[property.name] = {
+            "type": property.type,
+            "description": property.description,
+        }
     return {"type": "object", "properties": properties_dict, "required": required}
 
 
