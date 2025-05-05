@@ -55,9 +55,7 @@ def chat_loop(
                 if response.tool_call_name == "message":
                     text_content = response.tool_call_args["message_content"]
                 elif response.tool_call_name == "react":
-                    text_content = (
-                        f"[ reacted with {response.tool_call_args['reaction']}]"
-                    )
+                    text_content = f"[{config['name']} reacted with {response.tool_call_args['reaction']} to message with content \"{response.tool_call_args['identifying_substring']}\"]"
                 elif response.tool_call_name == "do_nothing":
                     text_content = f"[{config['name']} did nothing]"
                     responded = False
