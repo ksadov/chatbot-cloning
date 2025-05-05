@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from src.bot.chat_controller import ChatController
+from src.bot.llm import TextResponse, ToolCallResponse
 from src.bot.message import Message
 from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
@@ -47,17 +48,35 @@ def chat_loop(
             print(prompt)
             print("------------------")
         for response in responses:
-            message = Message(
-                conversation="commandline_conversation",
-                platform="commandline",
-                sender_name=config["name"],
-                text_content=response,
-                timestamp=datetime.datetime.now(),
-                bot_config=config,
-            )
-            if database:
-                database.store_message(message)
-            print(response)
+            responded = True
+            if isinstance(response, TextResponse):
+                text_content = response.text
+            elif isinstance(response, ToolCallResponse):
+                if response.tool_call_name == "message":
+                    text_content = response.tool_call_args["message_content"]
+                elif response.tool_call_name == "react":
+                    text_content = (
+                        f"[ reacted with {response.tool_call_args['reaction']}]"
+                    )
+                elif response.tool_call_name == "do_nothing":
+                    text_content = f"[{config['name']} did nothing]"
+                    responded = False
+                else:
+                    raise ValueError(
+                        f"Unknown tool call name: {response.tool_call_name}"
+                    )
+            if responded:
+                message = Message(
+                    conversation="commandline_conversation",
+                    platform="commandline",
+                    sender_name=config["name"],
+                    text_content=text_content,
+                    timestamp=datetime.datetime.now(),
+                    bot_config=config,
+                )
+                if database:
+                    database.store_message(message)
+            print(text_content)
             controller.update_conv_history(message)
 
 

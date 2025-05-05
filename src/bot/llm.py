@@ -1,10 +1,23 @@
+import json
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import pydantic
 import requests
 
 from src.bot.conversation_prompt_formatter import ConversationPromptFormatter
+from src.bot.tools.communication import CommunicationTool
 from src.utils.local_logger import LocalLogger
+
+
+class ToolCallResponse(pydantic.BaseModel):
+    tool_call_id: str
+    tool_call_name: str
+    tool_call_args: dict
+
+
+class TextResponse(pydantic.BaseModel):
+    text: str
 
 
 class LLM:
@@ -38,7 +51,8 @@ class LLM:
         conversation_results: List[str],
         include_timestamp: bool,
         current_conversation_name: str,
-    ) -> Tuple[str, List[str]]:
+        tools: List[CommunicationTool],
+    ) -> Tuple[str, List[TextResponse] | List[ToolCallResponse]]:
         prompt = self.conversation_formatter.make_query(
             name,
             chat_user_name,
@@ -49,15 +63,23 @@ class LLM:
             current_conversation_name,
         )
         if self.instruct:
-            response = self.make_instruct_request(prompt)
-            # todo, handle multiple messages better when I get a good scaffold figured out
-            responses = [response]
+            instruct_output = self.make_instruct_request(prompt, tools)
+            if isinstance(instruct_output, TextResponse):
+                responses = [instruct_output]
+            else:
+                responses = instruct_output
         else:
-            raw_response = self.make_completion_request(prompt, name, chat_user_name)
-            responses = self.conversation_formatter.cleanup_output(raw_response, name)
+            responses = self.make_completion_request(prompt, name, chat_user_name)
         return prompt, responses
 
-    def make_instruct_request(self, prompt: str) -> str:
+    def make_instruct_request(
+        self, prompt: str, tools: list[str]
+    ) -> TextResponse | List[ToolCallResponse]:
+        """
+        Make an instruct request to the LLM.
+        If tools are provided, the response will be a list of ToolCallResponse.
+        Otherwise, the response will be a TextResponse.
+        """
         self.logger.debug(f"Making instruct request with prompt: {prompt}")
         is_anthropic = "claude" in self.model.lower() or "anthropic" in self.api_base
 
@@ -78,6 +100,23 @@ class LLM:
             **self.prompt_params,
         }
 
+        is_messages_endpoint = "messages" in self.api_base
+
+        if tools:
+            if is_messages_endpoint:
+                tool_choice_str = "any"
+                formatted_tool_dicts = [
+                    tool.message_api_representation() for tool in tools
+                ]
+            else:
+                tool_choice_str = "required"
+                formatted_tool_dicts = [
+                    tool.completion_api_representation() for tool in tools
+                ]
+
+            request_body["tools"] = formatted_tool_dicts
+            request_body["tool_choice"] = tool_choice_str
+
         response = requests.post(
             self.api_base,
             headers=headers,
@@ -86,13 +125,25 @@ class LLM:
         response.raise_for_status()
         self.logger.debug(f"LLM response: {response.json()}")
 
-        is_messages_endpoint = "messages" in self.api_base
-
         try:
             if is_messages_endpoint:
                 results = response.json()["content"][0]["text"]
             else:
-                results = response.json()["choices"][0]["message"]["content"]
+                if tools:
+                    raw_results = response.json()["choices"][0]["message"]["tool_calls"]
+                    print("raw_results", raw_results)
+                    results = [
+                        ToolCallResponse(
+                            tool_call_id=result["id"],
+                            tool_call_name=result["function"]["name"],
+                            tool_call_args=json.loads(result["function"]["arguments"]),
+                        )
+                        for result in raw_results
+                    ]
+                else:
+                    raw_results = response.json()["choices"][0]["message"]["content"]
+                    results = TextResponse(text=raw_results)
+
         except Exception as e:
             raise Exception(f"Failed to parse API response: {str(e)}")
 
@@ -111,4 +162,7 @@ class LLM:
         response.raise_for_status()
         self.logger.debug(f"LLM response: {response.json()}")
         raw_response = response.json()["choices"][0]["text"]
-        return raw_response
+        cleaned_response = self.conversation_formatter.cleanup_output(
+            raw_response, name
+        )
+        return [TextResponse(text=response) for response in cleaned_response]

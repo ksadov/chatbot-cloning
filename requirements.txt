@@ -8,3 +8,4 @@ Jinja2
 pymilvus
 flask
 faiss-cpu
+mcp

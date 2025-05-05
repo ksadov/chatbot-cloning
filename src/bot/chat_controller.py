@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
+from typing import List
 
 from src.bot.conv_history import ConvHistory, Message
-from src.bot.llm import LLM
+from src.bot.llm import LLM, TextResponse, ToolCallResponse
 from src.bot.rag_module import RagModule
+from src.bot.tools.communication import DO_NOTHING_TOOL, MESSAGE_TOOL, REACT_TOOL
 from src.utils.local_logger import LocalLogger
 
 
@@ -38,6 +40,14 @@ class ChatController:
             self.config["prompt_template_path"],
             self.logger,
         )
+        self.tool_use = self.config["tool_use"]
+        if self.tool_use:
+            self.tools = [REACT_TOOL, MESSAGE_TOOL, DO_NOTHING_TOOL]
+            self.tool_mapping = {}
+            for tool in self.tools:
+                self.tool_mapping[tool.name] = tool
+        else:
+            self.tools = []
         self.conv_history_dict = {}
 
     def update_conv_history(self, message: Message):
@@ -60,7 +70,7 @@ class ChatController:
     def make_response(
         self,
         message: Message,
-    ) -> tuple[str, list[str]]:
+    ) -> tuple[str, List[TextResponse] | List[ToolCallResponse]]:
         if message.conversation not in self.conv_history_dict:
             raise ValueError(f"Conversation {message.conversation} not found")
         full_query = self.conv_history_dict[message.conversation].str_of_depth(
@@ -82,6 +92,7 @@ class ChatController:
             conversation_results,
             self.config["include_timestamp"],
             message.conversation,
+            self.tools,
         )
         return prompt, responses
 
