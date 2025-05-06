@@ -63,10 +63,11 @@ class Agent:
         for response in responses:
             mcp_server = self.tool_mapping.get(response.tool_call_name, None)
             if mcp_server is not None:
-                tool_result = await mcp_server.tool_call(
+                tool_results = await mcp_server.tool_call(
                     response.tool_call_name, response.tool_call_args
                 )
-                self.tool_call_history.add_event(tool_result)
+                for tool_result in tool_results:
+                    self.tool_call_history.add_event(tool_result)
                 # since we didn't call a communication tool
                 # we increment the turn counter and invoke the agent again
                 self.turn_counter += 1

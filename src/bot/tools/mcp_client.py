@@ -59,17 +59,21 @@ class MCPClient:
             f"Connected to server {self.server_name} with tools: {[tool.name for tool in self.tools]}"
         )
 
-    async def tool_call(self, tool_name: str, tool_args: dict) -> ToolCallEvent:
+    async def tool_call(self, tool_name: str, tool_args: dict) -> List[ToolCallEvent]:
         result = await self.session.call_tool(tool_name, tool_args)
-        print("Let's see the result", result)
-        if isinstance(result.content[0], TextContent):
-            return ToolCallEvent(
-                tool_name=tool_name,
-                tool_args=tool_args,
-                tool_result=result.content[0].text,
-            )
-        else:
-            raise ValueError(f"Unexpected tool call content type: {result.content[0]}")
+        tool_call_events = []
+        for result_content in result.content:
+            if isinstance(result_content, TextContent):
+                tool_call_events.append(
+                    ToolCallEvent(
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        tool_result=result_content.text,
+                    )
+                )
+            else:
+                raise ValueError(f"Unexpected tool call content type: {result_content}")
+        return tool_call_events
 
 
 async def get_mcp_tool_info(
