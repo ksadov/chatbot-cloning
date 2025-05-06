@@ -160,10 +160,14 @@ class DiscordBot(discord.Client):
             raise e
 
     async def discord_message_from_snippet(
-        self, snippet: str, current_channel: discord.TextChannel
+        self, username: str, snippet: str, current_channel: discord.TextChannel
     ) -> Optional[discord.Message]:
         async for message in current_channel.history(limit=100):
-            if snippet in message.content:
+            chat_user_name = get_displayed_name(message.author)
+            print("chat name", chat_user_name)
+            print("username", username)
+
+            if username in chat_user_name and snippet in message.content:
                 return message
         return None
 
@@ -172,6 +176,7 @@ class DiscordBot(discord.Client):
     ):
         if tool_call.tool_call_name == "react":
             message_for_reaction = await self.discord_message_from_snippet(
+                tool_call.tool_call_args["username"],
                 tool_call.tool_call_args["identifying_substring"],
                 message.channel,
             )

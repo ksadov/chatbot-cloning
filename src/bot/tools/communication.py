@@ -11,13 +11,18 @@ REACT_TOOL = Tool(
                 description="The reaction to send (must be a single emoji)",
             ),
             Property(
+                name="username",
+                type="string",
+                description="The username of the user who sent the message",
+            ),
+            Property(
                 name="identifying_substring",
                 type="string",
                 description="A subset of the message content that uniquely identifies the message. "
                 "Example: 'Hello, world!' -> 'world'",
             ),
         ],
-        ["reaction", "identifying_substring"],
+        ["reaction", "username", "identifying_substring"],
     ),
 )
 
