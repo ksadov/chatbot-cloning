@@ -18,7 +18,7 @@ This code has been tested with with Python 3.9.13.
 3. In another terminal window: `python -m src.scripts.serve_retrieval --config configs/retrieval/zef_demo_conv_history.json --port 5001`
 4. In yet another window: `python -m src.scripts.chat --bot_config_path configs/bot/zef_demo.json`
 
-Step 4 will drop you into a command-line chat loop with a bot based on the contents of `data/zef.txt`. Read on to learn how to change your bot's source data, prompt, LLM backend and more.
+Step 4 will drop you into a command-line chat loop with a bot based on the contents of `data/zef.txt`. Read on to learn how to change your bot's source data, prompt, LLM backend, add MCP servers and more.
 
 # Customizing your bot
 ## Retrieval
@@ -48,17 +48,40 @@ If you want to use your own data, you can either:
 Once you have a retrieval config that you're satisfied with, you can serve it using `python -m src.scripts.serve_retrieval --config configs/retrieval/my_store.json`.
 
 ## Chat
+
 ### Prompt template
 You can specify the format to use when presenting information to your model with a Jinja template. `configs/prompt_templates` contains two examples of such templates:
 - `zef_completion.j2` is designed to be used with base models like Mixtral-8x7B-v0.1 which try to continue the output of whatever input they got.
 - `zef_instruct.j2` is designed to be used with instruction models like OpenAI's GPT or Anthropic's Claude.
 
 ### LLM config
-You can use any inference endpoint which implements the [OpenAI Chat Completions spec](https://platform.openai.com/docs/api-reference/chat) (which includes many non-OpenAI providers, like [Together AI](https://docs.together.ai/reference/chat-completions-1)) or [Anthropic's messages API](https://docs.anthropic.com/en/api/messages) (though tool use is unsupported). See `configs/llm` for examples.
+You can use any inference endpoint which implements the [OpenAI Chat Completions spec](https://platform.openai.com/docs/api-reference/chat) (which includes many non-OpenAI providers, like [Together AI](https://docs.together.ai/reference/chat-completions-1)) or [Anthropic's messages API](https://docs.anthropic.com/en/api/messages).
+
+See `configs/llm` for examples.
 ### Config
 `configs/bot/` contains examples of a config designed for base model inference and a config designed for instruct inference.
 
 Once you have a bot config that you're satisfied with, you can chat with in from the command line with `python -m src.scripts.chat --bot_config_path configs/bot/my_config.json`.
+
+### Tools
+If your chosen LLM endpoint supports tool use, you can set `tool_use` to true in your bot config to allow your bot to add reactions to messages and use [MCP servers](https://modelcontextprotocol.io/introduction) of your choice. To add an MCP server to a bot config, extend the `mcp_servers` field of your bot config like so:
+
+```
+"mcp_servers": [
+    {
+      "name": "My MCP server",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/script",
+        "run",
+        "my_mcp_server.py"
+      ]
+    }
+  ]
+```
+
+Where `command` and `args` follow the [Claude Desktop MCP server](https://modelcontextprotocol.io/quickstart/user) format for running Python or JavaScript MCP servers.
 
 ## Discord
 To chat with your bot on Discord, you'll need to [make a Discord bot account and acquire a token](https://www.writebots.com/discord-bot-token/). Then you'll need to create a Discord bot config: see `configs/discord` for an example. You'll need to specify the following fields:

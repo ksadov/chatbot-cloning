@@ -21,7 +21,13 @@ Here are some excerpts from previous simulated conversations. Use this to unders
 - {{ result }}
 {% endfor %}
 
+{% if tool_call_history %}
+Here's a history of the tool calls made in the conversation so far:
+{% for event in tool_call_history %}
+- {{ event }}
+{% endfor %}
 {% endif %}
+
 Conversation history:
 
 {{ conv_history }}
