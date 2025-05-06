@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import datetime
 import json
 from pathlib import Path
@@ -11,13 +12,14 @@ from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 
 
-def chat_loop(
+async def chat_loop(
     bot_config_path: Path,
     database_config_path: Optional[Path],
     show_prompt: bool,
     logger: LocalLogger,
 ):
     controller = ChatController(bot_config_path, logger)
+    await controller.initialize_tools()
     database = (
         database_from_config_path(database_config_path)
         if database_config_path
@@ -41,7 +43,7 @@ def chat_loop(
         if database:
             database.store_message(message)
         controller.update_conv_history(message)
-        prompt, responses = controller.make_response(message)
+        prompt, responses = await controller.make_response(message)
         if show_prompt:
             print("------------------")
             print("PROMPT:")
@@ -60,9 +62,8 @@ def chat_loop(
                     text_content = f"[{config['name']} did nothing]"
                     responded = False
                 else:
-                    raise ValueError(
-                        f"Unknown tool call name: {response.tool_call_name}"
-                    )
+                    text_content = f"[{config['name']} called tool {response.tool_call_name} with args {response.tool_call_args}]"
+                    responded = False
             if responded:
                 message = Message(
                     conversation="commandline_conversation",
@@ -122,11 +123,13 @@ def main():
     logger = LocalLogger(
         args.log_dir, "chat", args.console_log_level, args.file_log_level
     )
-    chat_loop(
-        args.bot_config_path,
-        args.database_config_path,
-        args.show_prompt,
-        logger,
+    asyncio.run(
+        chat_loop(
+            args.bot_config_path,
+            args.database_config_path,
+            args.show_prompt,
+            logger,
+        )
     )
 
 

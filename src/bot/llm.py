@@ -7,6 +7,7 @@ import requests
 
 from src.bot.conversation_prompt_formatter import ConversationPromptFormatter
 from src.bot.tools.communication import CommunicationTool
+from src.bot.tools.tool_call_event import ToolCallHistory
 from src.utils.local_logger import LocalLogger
 
 
@@ -52,6 +53,7 @@ class LLM:
         include_timestamp: bool,
         current_conversation_name: str,
         tools: List[CommunicationTool],
+        tool_call_history: ToolCallHistory,
     ) -> Tuple[str, List[TextResponse] | List[ToolCallResponse]]:
         prompt = self.conversation_formatter.make_query(
             name,
@@ -61,6 +63,7 @@ class LLM:
             conversation_results,
             include_timestamp,
             current_conversation_name,
+            tool_call_history,
         )
         if self.instruct:
             instruct_output = self.make_instruct_request(prompt, tools)

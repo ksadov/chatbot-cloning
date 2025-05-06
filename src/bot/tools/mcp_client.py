@@ -1,20 +1,31 @@
 # modified from https://modelcontextprotocol.io/quickstart/client
 import json
 from contextlib import AsyncExitStack
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
-from mcp import ClientSession, StdioServerParameters
+from mcp import ClientSession, StdioServerParameters, Tool
 from mcp.client.stdio import stdio_client
+from mcp.types import TextContent
+from pydantic import BaseModel
+
+from src.bot.tools.communication import CommunicationTool
+from src.bot.tools.tool_call_event import ToolCallEvent
+from src.utils.local_logger import LocalLogger
+
+
+class MCPServerConfig(BaseModel):
+    name: str
+    command: str
+    args: List[str]
 
 
 class MCPClient:
-    def __init__(self):
+    def __init__(self, logger: LocalLogger):
+        self.logger = logger
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
 
-    async def connect_to_server(
-        self, server_script_path: str, server_name: str, server_desc: str
-    ):
+    async def connect_to_server(self, server_config: MCPServerConfig):
         """Connect to an MCP server
 
         Args:
@@ -22,16 +33,13 @@ class MCPClient:
             server_name: Name of the server
             server_desc: Description of the server
         """
-        self.server_name = server_name
-        self.server_desc = server_desc
-        is_python = server_script_path.endswith(".py")
-        is_js = server_script_path.endswith(".js")
-        if not (is_python or is_js):
-            raise ValueError("Server script must be a .py or .js file")
-
-        command = "python" if is_python else "node"
+        self.server_name = server_config.name
+        self.server_command = server_config.command
+        self.server_args = server_config.args
         server_params = StdioServerParameters(
-            command=command, args=[server_script_path], env=None
+            command=self.server_command,
+            args=self.server_args,
+            env=None,
         )
 
         stdio_transport = await self.exit_stack.enter_async_context(
@@ -46,28 +54,41 @@ class MCPClient:
 
         # List available tools
         response = await self.session.list_tools()
-        tools = response.tools
-        print("\nConnected to server with tools:", [tool.name for tool in tools])
-
-    async def list_tool_strs(self) -> List[str]:
-        response = await self.session.list_tools()
-        tool_strs = [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.inputSchema,
-            }
-            for tool in response.tools
-        ]
-        return tool_strs
-
-    async def get_server_info(self) -> str:
-        tool_strs = await self.list_tool_strs()
-        tool_strs_formatted = "\n".join(
-            json.dumps(tool_str, indent=2) for tool_str in tool_strs
+        self.tools = response.tools
+        self.logger.info(
+            f"Connected to server {self.server_name} with tools: {[tool.name for tool in self.tools]}"
         )
-        return f"{self.server_name}: {self.server_desc}\n\nAvailable tools:\n{tool_strs_formatted}"
 
-    async def tool_call(self, tool_name: str, tool_args: dict) -> str:
+    async def tool_call(self, tool_name: str, tool_args: dict) -> ToolCallEvent:
         result = await self.session.call_tool(tool_name, tool_args)
-        return result.content
+        print("Let's see the result", result)
+        if isinstance(result.content[0], TextContent):
+            return ToolCallEvent(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                tool_result=result.content[0].text,
+            )
+        else:
+            raise ValueError(f"Unexpected tool call content type: {result.content[0]}")
+
+
+async def get_mcp_tool_info(
+    mcp_configs: List[MCPServerConfig],
+    logger: LocalLogger,
+) -> Tuple[List[Tool], Dict[str, MCPClient]]:
+    tools = []
+    tool_dict = {}
+    for mcp_config in mcp_configs:
+        mcp_client = MCPClient(logger)
+        await mcp_client.connect_to_server(mcp_config)
+        for tool in mcp_client.tools:
+            tools.append(
+                CommunicationTool(
+                    name=tool.name,
+                    description=tool.description,
+                    input_schema=tool.inputSchema,
+                    required=tool.inputSchema["required"],
+                )
+            )
+            tool_dict[tool.name] = mcp_client
+    return tools, tool_dict
