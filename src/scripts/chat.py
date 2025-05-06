@@ -61,6 +61,9 @@ async def chat_loop(
                 elif response.tool_call_name == "do_nothing":
                     text_content = f"[{config['name']} did nothing]"
                     responded = False
+                elif response.tool_call_name == "remove_react":
+                    text_content = f"[{config['name']} removed reaction {response.tool_call_args['reaction']} from message with content \"{response.tool_call_args['identifying_substring']}\"]"
+                    responded = False
                 else:
                     text_content = f"[{config['name']} called tool {response.tool_call_name} with args {response.tool_call_args}]"
                     responded = False

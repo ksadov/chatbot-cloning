@@ -8,6 +8,7 @@ from src.bot.tools.communication import (
     DO_NOTHING_TOOL,
     MESSAGE_TOOL,
     REACT_TOOL,
+    REMOVE_REACT_TOOL,
     is_communication_tool,
 )
 from src.bot.tools.mcp_client import MCPServerConfig, get_mcp_tool_info
@@ -27,7 +28,7 @@ class Agent:
         conversation_rag_module: Optional[RagModule],
     ):
         self.max_turns = max_turns
-        self.tools = [DO_NOTHING_TOOL, MESSAGE_TOOL, REACT_TOOL]
+        self.tools = [DO_NOTHING_TOOL, MESSAGE_TOOL, REACT_TOOL, REMOVE_REACT_TOOL]
         if gt_rag_module is not None:
             self.gt_vector_store_tool = VectorStoreTool(gt_rag_module, True)
             self.tools.append(self.gt_vector_store_tool)

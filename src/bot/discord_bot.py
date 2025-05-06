@@ -164,8 +164,6 @@ class DiscordBot(discord.Client):
     ) -> Optional[discord.Message]:
         async for message in current_channel.history(limit=100):
             chat_user_name = get_displayed_name(message.author)
-            print("chat name", chat_user_name)
-            print("username", username)
 
             if username in chat_user_name and snippet in message.content:
                 return message
@@ -186,6 +184,20 @@ class DiscordBot(discord.Client):
                 )
                 self.logger.info(
                     f"Added reaction {tool_call.tool_call_args['reaction']} to message {message_for_reaction.id}"
+                )
+        elif tool_call.tool_call_name == "remove_react":
+            message_for_reaction = await self.discord_message_from_snippet(
+                tool_call.tool_call_args["username"],
+                tool_call.tool_call_args["identifying_substring"],
+                message.channel,
+            )
+            if message_for_reaction:
+                await message_for_reaction.remove_reaction(
+                    tool_call.tool_call_args["reaction"],
+                    self.user,
+                )
+                self.logger.info(
+                    f"Removed reaction {tool_call.tool_call_args['reaction']} from message {message_for_reaction.id}"
                 )
         elif tool_call.tool_call_name == "message":
             await message.channel.send(tool_call.tool_call_args["message_content"])
@@ -231,7 +243,6 @@ class DiscordBot(discord.Client):
             removed = payload.event_type == "REACTION_REMOVE"
             reaction_author = await self.fetch_user(payload.user_id)
             original_message_author = await self.fetch_user(payload.message_author_id)
-            print("channel id", payload.channel_id)
             channel = self.get_channel(payload.channel_id)
             if channel:
                 original_discord_message = await channel.fetch_message(
