@@ -66,6 +66,7 @@ class DiscordBot(discord.Client):
         self.response_tasks = {}  # conversation_id -> asyncio.Task
 
     async def on_ready(self):
+        await self.chat_controller.initialize_tools()
         self.logger.info(f"{self.user} has connected to Discord!")
 
     async def get_referenced_message(self, message: discord.Message) -> discord.Message:
@@ -199,7 +200,9 @@ class DiscordBot(discord.Client):
                 )
                 await message.channel.send(conv_clear_message)
             else:
-                prompt, responses = self.chat_controller.make_response(user_message)
+                prompt, responses = await self.chat_controller.make_response(
+                    user_message
+                )
                 self.logger.debug(f"Prompt: {prompt}")
                 self.logger.debug(f"Responses: {responses}")
                 if isinstance(responses[0], TextResponse):
