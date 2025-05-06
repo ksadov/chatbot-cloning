@@ -75,7 +75,10 @@ class ToolCallHistory(pydantic.BaseModel):
             self.tool_call_events.pop(0)
 
     def __str__(self):
-        return "\n".join([str(event) for event in self.tool_call_events])
+        if len(self.tool_call_events) == 0:
+            return "No tool calls recorded yet."
+        else:
+            return "\n".join([str(event) for event in self.tool_call_events])
 
 
 class ToolCallResponse(pydantic.BaseModel):
