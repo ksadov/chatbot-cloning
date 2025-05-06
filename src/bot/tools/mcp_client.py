@@ -1,5 +1,6 @@
 # modified from https://modelcontextprotocol.io/quickstart/client
 from contextlib import AsyncExitStack
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from mcp import ClientSession, StdioServerParameters
@@ -58,7 +59,9 @@ class MCPClient:
         )
 
     async def tool_call(self, tool_name: str, tool_args: dict) -> List[ToolCallEvent]:
+        start_time = datetime.now()
         result = await self.session.call_tool(tool_name, tool_args)
+        end_time = datetime.now()
         tool_call_events = []
         for result_content in result.content:
             if isinstance(result_content, TextContent):
@@ -67,6 +70,8 @@ class MCPClient:
                         tool_name=tool_name,
                         tool_args=tool_args,
                         tool_result=result_content.text,
+                        start_time=start_time,
+                        end_time=end_time,
                     )
                 )
             else:
