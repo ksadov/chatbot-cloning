@@ -57,6 +57,8 @@ class ChatController:
                 mcp_server_configs,
                 self.llm,
                 self.logger,
+                self.gt_rag_module,
+                self.conversation_rag_module,
             )
         self.conv_history_dict = {}
 

@@ -1,26 +1,4 @@
-import json
-from typing import List
-
-import pydantic
-
-from src.bot.tools.types import Tool
-
-
-class Property(pydantic.BaseModel):
-    name: str
-    type: str
-    description: str
-
-
-def input_schema_dict(properties: List[Property], required: List[str]) -> dict:
-    properties_dict = {}
-    for property in properties:
-        properties_dict[property.name] = {
-            "type": property.type,
-            "description": property.description,
-        }
-    return {"type": "object", "properties": properties_dict, "required": required}
-
+from src.bot.tools.types import Property, Tool, input_schema_dict
 
 REACT_TOOL = Tool(
     name="react",
@@ -62,3 +40,7 @@ DO_NOTHING_TOOL = Tool(
     description="Do nothing",
     input_schema=input_schema_dict([], []),
 )
+
+
+def is_communication_tool(tool_name: str) -> bool:
+    return tool_name in [REACT_TOOL.name, MESSAGE_TOOL.name, DO_NOTHING_TOOL.name]

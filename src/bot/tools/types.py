@@ -4,10 +4,27 @@ from typing import List, Optional
 import pydantic
 
 
-class Tool(pydantic.BaseModel):
+class Property(pydantic.BaseModel):
     name: str
+    type: str
     description: str
-    input_schema: dict
+
+
+def input_schema_dict(properties: List[Property], required: List[str]) -> dict:
+    properties_dict = {}
+    for property in properties:
+        properties_dict[property.name] = {
+            "type": property.type,
+            "description": property.description,
+        }
+    return {"type": "object", "properties": properties_dict, "required": required}
+
+
+class Tool:
+    def __init__(self, name: str, description: str, input_schema: dict):
+        self.name = name
+        self.description = description
+        self.input_schema = input_schema
 
     def completion_api_representation(self) -> dict:
         return {
