@@ -4,6 +4,8 @@ from typing import List
 
 from jinja2 import Template
 
+from src.bot.tools.types import ToolCallHistory
+
 
 class ConversationPromptFormatter:
 
@@ -19,6 +21,7 @@ class ConversationPromptFormatter:
         conversation_results: List[str],
         include_timestamp: bool,
         current_conversation_name: str,
+        tool_call_history: ToolCallHistory,
     ) -> str:
         context = {
             "name": name,
@@ -30,6 +33,7 @@ class ConversationPromptFormatter:
                 dt.now().strftime("%Y-%m-%d %H:%M") if include_timestamp else ""
             ),
             "current_conversation_name": current_conversation_name,
+            "tool_call_history": tool_call_history,
         }
         return self.template.render(**context)
 

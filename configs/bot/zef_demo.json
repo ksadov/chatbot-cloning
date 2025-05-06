@@ -9,5 +9,8 @@
   "max_conversation_length": 8192,
   "update_index_every": 5,
   "default_user_name": "Konstantine",
-  "update_rag_index": true
+  "update_rag_index": true,
+  "tool_use": true,
+  "max_turns": 10,
+  "mcp_servers": []
 }

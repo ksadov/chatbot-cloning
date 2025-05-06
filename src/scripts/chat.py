@@ -1,22 +1,25 @@
 import argparse
+import asyncio
 import datetime
 import json
 from pathlib import Path
 from typing import Optional
 
 from src.bot.chat_controller import ChatController
+from src.bot.llm import TextResponse, ToolCallResponse
 from src.bot.message import Message
 from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 
 
-def chat_loop(
+async def chat_loop(
     bot_config_path: Path,
     database_config_path: Optional[Path],
     show_prompt: bool,
     logger: LocalLogger,
 ):
     controller = ChatController(bot_config_path, logger)
+    await controller.initialize_tools()
     database = (
         database_from_config_path(database_config_path)
         if database_config_path
@@ -40,25 +43,43 @@ def chat_loop(
         if database:
             database.store_message(message)
         controller.update_conv_history(message)
-        prompt, responses = controller.make_response(message)
+        prompt, responses = await controller.make_response(message)
         if show_prompt:
             print("------------------")
             print("PROMPT:")
             print(prompt)
             print("------------------")
         for response in responses:
-            message = Message(
-                conversation="commandline_conversation",
-                platform="commandline",
-                sender_name=config["name"],
-                text_content=response,
-                timestamp=datetime.datetime.now(),
-                bot_config=config,
-            )
-            if database:
-                database.store_message(message)
-            print(response)
-            controller.update_conv_history(message)
+            responded = True
+            if isinstance(response, TextResponse):
+                text_content = response.text
+            elif isinstance(response, ToolCallResponse):
+                if response.tool_call_name == "message":
+                    text_content = response.tool_call_args["message_content"]
+                elif response.tool_call_name == "react":
+                    text_content = f"[{config['name']} reacted with {response.tool_call_args['reaction']} to message with content \"{response.tool_call_args['identifying_substring']}\"]"
+                elif response.tool_call_name == "do_nothing":
+                    text_content = f"[{config['name']} did nothing]"
+                    responded = False
+                elif response.tool_call_name == "remove_react":
+                    text_content = f"[{config['name']} removed reaction {response.tool_call_args['reaction']} from message with content \"{response.tool_call_args['identifying_substring']}\"]"
+                    responded = False
+                else:
+                    text_content = f"[{config['name']} called tool {response.tool_call_name} with args {response.tool_call_args}]"
+                    responded = False
+            if responded:
+                message = Message(
+                    conversation="commandline_conversation",
+                    platform="commandline",
+                    sender_name=config["name"],
+                    text_content=text_content,
+                    timestamp=datetime.datetime.now(),
+                    bot_config=config,
+                )
+                controller.update_conv_history(message)
+                if database:
+                    database.store_message(message)
+            print(text_content)
 
 
 def main():
@@ -105,11 +126,13 @@ def main():
     logger = LocalLogger(
         args.log_dir, "chat", args.console_log_level, args.file_log_level
     )
-    chat_loop(
-        args.bot_config_path,
-        args.database_config_path,
-        args.show_prompt,
-        logger,
+    asyncio.run(
+        chat_loop(
+            args.bot_config_path,
+            args.database_config_path,
+            args.show_prompt,
+            logger,
+        )
     )
 
 

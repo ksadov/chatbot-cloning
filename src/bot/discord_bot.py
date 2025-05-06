@@ -7,6 +7,7 @@ import discord
 
 from src.bot.chat_controller import ChatController
 from src.bot.message import Message, ReactionMessage
+from src.bot.tools.types import TextResponse, ToolCallResponse
 from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 
@@ -65,6 +66,7 @@ class DiscordBot(discord.Client):
         self.response_tasks = {}  # conversation_id -> asyncio.Task
 
     async def on_ready(self):
+        await self.chat_controller.initialize_tools()
         self.logger.info(f"{self.user} has connected to Discord!")
 
     async def get_referenced_message(self, message: discord.Message) -> discord.Message:
@@ -157,6 +159,53 @@ class DiscordBot(discord.Client):
             self.logger.error(f"Error in on_message: {e}")
             raise e
 
+    async def discord_message_from_snippet(
+        self, username: str, snippet: str, current_channel: discord.TextChannel
+    ) -> Optional[discord.Message]:
+        async for message in current_channel.history(limit=100):
+            chat_user_name = get_displayed_name(message.author)
+
+            if username in chat_user_name and snippet in message.content:
+                return message
+        return None
+
+    async def communication_tool_call(
+        self, message, user_message, tool_call: ToolCallResponse
+    ):
+        if tool_call.tool_call_name == "react":
+            message_for_reaction = await self.discord_message_from_snippet(
+                tool_call.tool_call_args["username"],
+                tool_call.tool_call_args["identifying_substring"],
+                message.channel,
+            )
+            if message_for_reaction:
+                await message_for_reaction.add_reaction(
+                    tool_call.tool_call_args["reaction"]
+                )
+                self.logger.info(
+                    f"Added reaction {tool_call.tool_call_args['reaction']} to message {message_for_reaction.id}"
+                )
+        elif tool_call.tool_call_name == "remove_react":
+            message_for_reaction = await self.discord_message_from_snippet(
+                tool_call.tool_call_args["username"],
+                tool_call.tool_call_args["identifying_substring"],
+                message.channel,
+            )
+            if message_for_reaction:
+                await message_for_reaction.remove_reaction(
+                    tool_call.tool_call_args["reaction"],
+                    self.user,
+                )
+                self.logger.info(
+                    f"Removed reaction {tool_call.tool_call_args['reaction']} from message {message_for_reaction.id}"
+                )
+        elif tool_call.tool_call_name == "message":
+            await message.channel.send(tool_call.tool_call_args["message_content"])
+        elif tool_call.tool_call_name == "do_nothing":
+            pass
+        else:
+            self.logger.error(f"Unknown tool call: {tool_call.tool_call_name}")
+
     async def handle_response(self, message, user_message, conv_clear_message):
         try:
             if message.content == self.discord_config["clear_command"]:
@@ -168,12 +217,20 @@ class DiscordBot(discord.Client):
                 )
                 await message.channel.send(conv_clear_message)
             else:
-                prompt, responses = self.chat_controller.make_response(user_message)
+                prompt, responses = await self.chat_controller.make_response(
+                    user_message
+                )
                 self.logger.debug(f"Prompt: {prompt}")
                 self.logger.debug(f"Responses: {responses}")
-                for response in responses:
-                    await message.channel.send(response)
-                    await asyncio.sleep(0.5)
+                if isinstance(responses[0], TextResponse):
+                    for response in responses:
+                        await message.channel.send(response.text)
+                        await asyncio.sleep(0.5)
+                elif isinstance(responses[0], ToolCallResponse):
+                    for response in responses:
+                        await self.communication_tool_call(
+                            message, user_message, response
+                        )
                 self.logger.info(f"Sent response to channel {message.channel.id}")
         except asyncio.CancelledError:
             self.logger.info(f"Response task cancelled for {user_message.conversation}")
@@ -186,7 +243,6 @@ class DiscordBot(discord.Client):
             removed = payload.event_type == "REACTION_REMOVE"
             reaction_author = await self.fetch_user(payload.user_id)
             original_message_author = await self.fetch_user(payload.message_author_id)
-            print("channel id", payload.channel_id)
             channel = self.get_channel(payload.channel_id)
             if channel:
                 original_discord_message = await channel.fetch_message(

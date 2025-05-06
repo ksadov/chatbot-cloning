@@ -4,7 +4,4 @@ matplotlib
 Jinja2
 pymilvus
 flask
-<<<<<<< HEAD
-=======
-faiss-cpu
->>>>>>> master
+mcp
