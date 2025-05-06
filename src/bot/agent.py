@@ -1,10 +1,11 @@
+from datetime import datetime
 from typing import List
 
 from src.bot.conv_history import ConvHistory
 from src.bot.llm import LLM
 from src.bot.tools.communication import DO_NOTHING_TOOL, MESSAGE_TOOL, REACT_TOOL
 from src.bot.tools.mcp_client import MCPServerConfig, get_mcp_tool_info
-from src.bot.tools.types import ToolCallHistory
+from src.bot.tools.types import ToolCallEvent, ToolCallHistory
 from src.utils.local_logger import LocalLogger
 
 
@@ -81,5 +82,14 @@ class Agent:
                     conversation,
                 )
             else:
+                self.tool_call_history.add_event(
+                    ToolCallEvent(
+                        tool_name=response.tool_call_name,
+                        tool_args=response.tool_call_args,
+                        tool_result=None,
+                        start_time=datetime.now(),
+                        end_time=None,
+                    )
+                )
                 self.turn_counter = 0
                 return prompt, responses

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import pydantic
 
@@ -30,14 +30,22 @@ class Tool(pydantic.BaseModel):
 class ToolCallEvent(pydantic.BaseModel):
     tool_name: str
     tool_args: dict
-    tool_result: str
+    tool_result: Optional[str]
     start_time: datetime
-    end_time: datetime
+    end_time: Optional[datetime]
 
     def __str__(self):
-        start_formatted = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
-        end_formatted = self.end_time.strftime("%Y-%m-%d %H:%M:%S")
-        return f"{self.tool_name} ({start_formatted} - {end_formatted}): {self.tool_result}"
+        start_formatted = self.start_time.strftime("%H:%M:%S")
+        if self.end_time:
+            end_formatted = self.end_time.strftime("%H:%M:%S")
+            time_formatted = f"{start_formatted} - {end_formatted}"
+        else:
+            time_formatted = start_formatted
+        if self.tool_result:
+            result_suffix = f": {self.tool_result}"
+        else:
+            result_suffix = ""
+        return f"- {self.tool_name} with args {self.tool_args} at time {time_formatted}{result_suffix}"
 
 
 class ToolCallHistory(pydantic.BaseModel):
