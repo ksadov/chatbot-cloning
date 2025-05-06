@@ -4,7 +4,7 @@ from typing import List
 
 from jinja2 import Template
 
-from src.bot.tools.tool_call_event import ToolCallHistory
+from src.bot.tools.types import ToolCallHistory
 
 
 class ConversationPromptFormatter:

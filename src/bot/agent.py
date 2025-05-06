@@ -4,7 +4,7 @@ from src.bot.conv_history import ConvHistory
 from src.bot.llm import LLM
 from src.bot.tools.communication import DO_NOTHING_TOOL, MESSAGE_TOOL, REACT_TOOL
 from src.bot.tools.mcp_client import MCPServerConfig, get_mcp_tool_info
-from src.bot.tools.tool_call_event import ToolCallHistory
+from src.bot.tools.types import ToolCallHistory
 from src.utils.local_logger import LocalLogger
 
 

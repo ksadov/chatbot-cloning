@@ -6,8 +6,8 @@ from typing import Optional
 import discord
 
 from src.bot.chat_controller import ChatController
-from src.bot.llm import TextResponse, ToolCallResponse
 from src.bot.message import Message, ReactionMessage
+from src.bot.tools.types import TextResponse, ToolCallResponse
 from src.message_database.utils import database_from_config_path
 from src.utils.local_logger import LocalLogger
 

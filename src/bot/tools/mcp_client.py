@@ -1,15 +1,13 @@
 # modified from https://modelcontextprotocol.io/quickstart/client
-import json
 from contextlib import AsyncExitStack
 from typing import Dict, List, Optional, Tuple
 
-from mcp import ClientSession, StdioServerParameters, Tool
+from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.types import TextContent
 from pydantic import BaseModel
 
-from src.bot.tools.communication import CommunicationTool
-from src.bot.tools.tool_call_event import ToolCallEvent
+from src.bot.tools.types import Tool, ToolCallEvent
 from src.utils.local_logger import LocalLogger
 
 
@@ -87,11 +85,10 @@ async def get_mcp_tool_info(
         await mcp_client.connect_to_server(mcp_config)
         for tool in mcp_client.tools:
             tools.append(
-                CommunicationTool(
+                Tool(
                     name=tool.name,
                     description=tool.description,
                     input_schema=tool.inputSchema,
-                    required=tool.inputSchema["required"],
                 )
             )
             tool_dict[tool.name] = mcp_client

@@ -4,9 +4,10 @@ from typing import List
 
 from src.bot.agent import Agent
 from src.bot.conv_history import ConvHistory, Message
-from src.bot.llm import LLM, TextResponse, ToolCallResponse
+from src.bot.llm import LLM
 from src.bot.rag_module import RagModule
 from src.bot.tools.mcp_client import MCPServerConfig
+from src.bot.tools.types import TextResponse, ToolCallResponse
 from src.utils.local_logger import LocalLogger
 
 

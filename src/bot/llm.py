@@ -2,23 +2,11 @@ import json
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import pydantic
 import requests
 
 from src.bot.conversation_prompt_formatter import ConversationPromptFormatter
-from src.bot.tools.communication import CommunicationTool
-from src.bot.tools.tool_call_event import ToolCallHistory
+from src.bot.tools.types import TextResponse, Tool, ToolCallHistory, ToolCallResponse
 from src.utils.local_logger import LocalLogger
-
-
-class ToolCallResponse(pydantic.BaseModel):
-    tool_call_id: str
-    tool_call_name: str
-    tool_call_args: dict
-
-
-class TextResponse(pydantic.BaseModel):
-    text: str
 
 
 class LLM:
@@ -52,7 +40,7 @@ class LLM:
         conversation_results: List[str],
         include_timestamp: bool,
         current_conversation_name: str,
-        tools: Optional[List[CommunicationTool]] = None,
+        tools: Optional[List[Tool]] = None,
         tool_call_history: Optional[ToolCallHistory] = None,
     ) -> Tuple[str, List[TextResponse] | List[ToolCallResponse]]:
         prompt = self.conversation_formatter.make_query(
@@ -144,7 +132,6 @@ class LLM:
             else:
                 if tools:
                     raw_results = response.json()["choices"][0]["message"]["tool_calls"]
-                    print("raw_results", raw_results)
                     results = [
                         ToolCallResponse(
                             tool_call_id=result["id"],

@@ -3,6 +3,8 @@ from typing import List
 
 import pydantic
 
+from src.bot.tools.types import Tool
+
 
 class Property(pydantic.BaseModel):
     name: str
@@ -20,31 +22,7 @@ def input_schema_dict(properties: List[Property], required: List[str]) -> dict:
     return {"type": "object", "properties": properties_dict, "required": required}
 
 
-class CommunicationTool(pydantic.BaseModel):
-    name: str
-    description: str
-    input_schema: dict
-    required: list[str] = []
-
-    def completion_api_representation(self) -> dict:
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.input_schema,
-            },
-        }
-
-    def message_api_representation(self) -> dict:
-        return {
-            "name": self.name,
-            "description": self.description,
-            "input_schema": self.input_schema,
-        }
-
-
-REACT_TOOL = CommunicationTool(
+REACT_TOOL = Tool(
     name="react",
     description="React to a message in the current conversation",
     input_schema=input_schema_dict(
@@ -65,7 +43,7 @@ REACT_TOOL = CommunicationTool(
     ),
 )
 
-MESSAGE_TOOL = CommunicationTool(
+MESSAGE_TOOL = Tool(
     name="message",
     description="Send a message in the current conversation",
     input_schema=input_schema_dict(
@@ -79,7 +57,7 @@ MESSAGE_TOOL = CommunicationTool(
         ["message_content"],
     ),
 )
-DO_NOTHING_TOOL = CommunicationTool(
+DO_NOTHING_TOOL = Tool(
     name="do_nothing",
     description="Do nothing",
     input_schema=input_schema_dict([], []),
