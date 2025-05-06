@@ -2,12 +2,11 @@ import json
 from pathlib import Path
 from typing import List
 
+from src.bot.agent import Agent
 from src.bot.conv_history import ConvHistory, Message
 from src.bot.llm import LLM, TextResponse, ToolCallResponse
 from src.bot.rag_module import RagModule
-from src.bot.tools.communication import DO_NOTHING_TOOL, MESSAGE_TOOL, REACT_TOOL
-from src.bot.tools.mcp_client import MCPServerConfig, get_mcp_tool_info
-from src.bot.tools.tool_call_event import ToolCallHistory
+from src.bot.tools.mcp_client import MCPServerConfig
 from src.utils.local_logger import LocalLogger
 
 
@@ -44,25 +43,7 @@ class ChatController:
         )
         self.tool_use = self.config["tool_use"]
         if self.tool_use:
-            self.tools = [REACT_TOOL, MESSAGE_TOOL, DO_NOTHING_TOOL]
-            self.tool_mapping = {}
-            self.tool_call_history = ToolCallHistory(
-                tool_call_events=[],
-                max_length=self.config["max_tool_call_history"],
-            )
-        else:
-            self.tools = []
-            self.tool_mapping = {}
-            self.tool_call_history = ToolCallHistory(
-                tool_call_events=[],
-                max_length=self.config["max_tool_call_history"],
-            )
-        self.conv_history_dict = {}
-
-    async def initialize_tools(self):
-        """Initialize MCP tools asynchronously."""
-        if self.tool_use:
-            mcp_servers = [
+            mcp_server_configs = [
                 MCPServerConfig(
                     name=server["name"],
                     command=server["command"],
@@ -70,11 +51,18 @@ class ChatController:
                 )
                 for server in self.config["mcp_servers"]
             ]
-            mcp_tools, self.tool_mapping = await get_mcp_tool_info(
-                mcp_servers,
+            self.agent = Agent(
+                self.config["max_turns"],
+                mcp_server_configs,
+                self.llm,
                 self.logger,
             )
-            self.tools.extend(mcp_tools)
+        self.conv_history_dict = {}
+
+    async def initialize_tools(self):
+        """Initialize MCP tools asynchronously."""
+        if self.tool_use:
+            await self.agent.initialize_tools()
 
     def update_conv_history(self, message: Message):
         if message.conversation not in self.conv_history_dict:
@@ -110,27 +98,26 @@ class ChatController:
             conversation_results = self.conversation_rag_module.search(full_query)
         else:
             conversation_results = []
-        prompt, responses = self.llm.chat_step(
-            self.target_name,
-            message.sender_name,
-            self.conv_history_dict[message.conversation],
-            gt_results,
-            conversation_results,
-            self.config["include_timestamp"],
-            message.conversation,
-            self.tools,
-            self.tool_call_history,
-        )
         if self.tool_use:
-            for response in responses:
-                if isinstance(response, ToolCallResponse):
-                    mcp_server = self.tool_mapping.get(response.tool_call_name)
-                    if mcp_server is not None:
-                        tool_result = await mcp_server.tool_call(
-                            response.tool_call_name, response.tool_call_args
-                        )
-                        self.tool_call_history.add_event(tool_result)
-                        print("Tool call history", self.tool_call_history)
+            prompt, responses = await self.agent.invoke_agent(
+                self.target_name,
+                message.sender_name,
+                self.conv_history_dict[message.conversation],
+                gt_results,
+                conversation_results,
+                self.config["include_timestamp"],
+                message.conversation,
+            )
+        else:
+            prompt, responses = self.llm.chat_step(
+                self.target_name,
+                message.sender_name,
+                self.conv_history_dict[message.conversation],
+                gt_results,
+                conversation_results,
+                self.config["include_timestamp"],
+                message.conversation,
+            )
         return prompt, responses
 
     def emergency_save(self):

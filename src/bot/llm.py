@@ -52,8 +52,8 @@ class LLM:
         conversation_results: List[str],
         include_timestamp: bool,
         current_conversation_name: str,
-        tools: List[CommunicationTool],
-        tool_call_history: ToolCallHistory,
+        tools: Optional[List[CommunicationTool]] = None,
+        tool_call_history: Optional[ToolCallHistory] = None,
     ) -> Tuple[str, List[TextResponse] | List[ToolCallResponse]]:
         prompt = self.conversation_formatter.make_query(
             name,
