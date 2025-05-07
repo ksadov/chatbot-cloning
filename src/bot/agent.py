@@ -115,15 +115,15 @@ class Agent:
                     )
             for tool_result in tool_results:
                 self.tool_call_histories[conversation].add_event(tool_result)
-            # since we didn't call a communication tool
-            # we increment the turn counter and invoke the agent again
-            self.turn_counter += 1
-            return await self.invoke_agent(
-                target_name,
-                sender_name,
-                conv_history,
-                gt_results,
-                conversation_results,
-                include_timestamp,
-                conversation,
-            )
+        # since we didn't call a communication tool
+        # we increment the turn counter and invoke the agent again
+        self.turn_counter += 1
+        return await self.invoke_agent(
+            target_name,
+            sender_name,
+            conv_history,
+            gt_results,
+            conversation_results,
+            include_timestamp,
+            conversation,
+        )
