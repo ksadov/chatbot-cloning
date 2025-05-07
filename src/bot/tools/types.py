@@ -59,10 +59,10 @@ class ToolCallEvent(pydantic.BaseModel):
         else:
             time_formatted = start_formatted
         if self.tool_result:
-            result_suffix = f": {self.tool_result}"
+            result_suffix = f"\n Result: {self.tool_result}"
         else:
             result_suffix = ""
-        return f"- {self.tool_name} with args {self.tool_args} at time {time_formatted}{result_suffix}"
+        return f"* [{self.tool_name} with args {self.tool_args} at time {time_formatted}{result_suffix}]"
 
 
 class ToolCallHistory(pydantic.BaseModel):
