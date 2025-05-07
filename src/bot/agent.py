@@ -38,10 +38,7 @@ class Agent:
             )
             self.tools.append(self.conversation_vector_store_tool)
         self.tool_mapping = {}
-        self.tool_call_history = ToolCallHistory(
-            tool_call_events=[],
-            max_length=max_turns,
-        )
+        self.tool_call_histories = {}
         self.turn_counter = 0
         self.mcp_server_configs = mcp_server_configs
         self.llm = llm
@@ -70,6 +67,11 @@ class Agent:
             allowed_tools = [MESSAGE_TOOL, REACT_TOOL]
         else:
             allowed_tools = self.tools
+        if self.tool_call_histories.get(conversation, None) is None:
+            self.tool_call_histories[conversation] = ToolCallHistory(
+                tool_call_events=[],
+                max_length=self.max_turns,
+            )
         prompt, responses = self.llm.chat_step(
             target_name,
             sender_name,
@@ -79,11 +81,11 @@ class Agent:
             include_timestamp,
             conversation,
             allowed_tools,
-            self.tool_call_history,
+            self.tool_call_histories[conversation],
         )
         for response in responses:
             if is_communication_tool(response.tool_call_name):
-                self.tool_call_history.add_event(
+                self.tool_call_histories[conversation].add_event(
                     ToolCallEvent(
                         tool_name=response.tool_call_name,
                         tool_args=response.tool_call_args,
@@ -112,7 +114,7 @@ class Agent:
                         response.tool_call_name, response.tool_call_args
                     )
             for tool_result in tool_results:
-                self.tool_call_history.add_event(tool_result)
+                self.tool_call_histories[conversation].add_event(tool_result)
             # since we didn't call a communication tool
             # we increment the turn counter and invoke the agent again
             self.turn_counter += 1
