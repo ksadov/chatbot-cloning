@@ -113,9 +113,6 @@ class LLM:
             ],
             **self.prompt_params,
         }
-
-        print(request_body)
-
         is_messages_endpoint = "messages" in self.api_base
 
         if tools:
