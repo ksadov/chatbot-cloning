@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 
 import requests
 
+from src.bot.conv_history import ConvHistory
 from src.bot.conversation_prompt_formatter import ConversationPromptFormatter
 from src.bot.tools.types import TextResponse, Tool, ToolCallHistory, ToolCallResponse
 from src.utils.local_logger import LocalLogger
@@ -24,6 +25,7 @@ class LLM:
         self.api_key = self.config["api_key"]
         self.prompt_params = self.config["prompt_params"]
         self.model = self.config["model"]
+        self.vision = self.config["vision"]
         if prompt_template_path:
             self.conversation_formatter = ConversationPromptFormatter(
                 Path(prompt_template_path)
@@ -35,7 +37,7 @@ class LLM:
         self,
         name: str,
         chat_user_name: str,
-        conv_history: str,
+        conv_history: ConvHistory,
         gt_results: List[str],
         conversation_results: List[str],
         include_timestamp: bool,
@@ -54,7 +56,10 @@ class LLM:
             tool_call_history,
         )
         if self.instruct:
-            instruct_output = self.make_instruct_request(prompt, tools)
+            image_attachments = conv_history.get_image_attachments()
+            instruct_output = self.make_instruct_request(
+                prompt, tools, image_attachments
+            )
             if isinstance(instruct_output, TextResponse):
                 responses = [instruct_output]
             else:
@@ -64,7 +69,7 @@ class LLM:
         return prompt, responses
 
     def make_instruct_request(
-        self, prompt: str, tools: list[str]
+        self, prompt: str, tools: list[str], image_attachments: list[str]
     ) -> TextResponse | List[ToolCallResponse]:
         """
         Make an instruct request to the LLM.
@@ -83,13 +88,33 @@ class LLM:
         else:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
+        if self.vision:
+            if is_anthropic:
+                image_attachments = [
+                    {"type": "image", "source": {"type": "url", "url": attachment}}
+                    for attachment in image_attachments
+                ]
+            else:
+                image_attachments = [
+                    {"type": "image_url", "image_url": {"url": attachment + ".png"}}
+                    for attachment in image_attachments
+                ]
+            content = [
+                {"type": "text", "text": prompt},
+            ]
+            content.extend(image_attachments)
+        else:
+            content = prompt
+
         request_body = {
             "model": self.model,
             "messages": [
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": content},
             ],
             **self.prompt_params,
         }
+
+        print(request_body)
 
         is_messages_endpoint = "messages" in self.api_base
 

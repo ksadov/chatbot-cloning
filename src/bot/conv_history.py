@@ -3,6 +3,12 @@ from src.bot.rag_module import RagModule
 from src.utils.local_logger import LocalLogger
 
 
+def is_image_attachment(filename: str) -> bool:
+    return filename.endswith(
+        (".png", ".jpg", ".jpeg", ".webp", ".PNG", ".JPG", ".JPEG", ".WEBP")
+    )
+
+
 class ConvHistory:
     def __init__(
         self,
@@ -89,6 +95,15 @@ class ConvHistory:
                 for message in self.history[-depth:]
             ]
         )
+
+    def get_image_attachments(self) -> list[str]:
+        attachments = []
+        for message in self.history:
+            if message.attachments:
+                for attachment in message.attachments:
+                    if is_image_attachment(attachment["filename"]):
+                        attachments.append(attachment["url"])
+        return attachments
 
     def __str__(self) -> str:
         return self.str_of_depth(len(self.history))

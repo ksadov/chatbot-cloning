@@ -24,7 +24,7 @@ class Message:
         global_user_id: Optional[str] = None,
         server_nickname: Optional[str] = None,
         account_username: Optional[str] = None,
-        attachments: Optional[Dict[str, str]] = None,
+        attachments: [Dict[str, str]] = [],
         id: Optional[str] = None,
         platform_specific_message_id: Optional[str] = None,
         replies_to_message_id: Optional[str] = None,

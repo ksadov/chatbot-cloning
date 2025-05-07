@@ -3,5 +3,6 @@
   "api_key": "sk-proj-your-openai-api-key",
   "model": "gpt-4o-mini",
   "instruct": true,
+  "vision": true,
   "prompt_params": {}
 }
