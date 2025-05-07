@@ -85,6 +85,11 @@ class DiscordBot(discord.Client):
         else:
             text_content = message.content
         try:
+            attachments = []
+            for attachment in message.attachments:
+                attachments.append(
+                    {"filename": attachment.filename, "url": attachment.url}
+                )
             new_message = Message(
                 conversation=get_chat_name(message),
                 platform="discord",
@@ -95,7 +100,7 @@ class DiscordBot(discord.Client):
                 platform_specific_message_id=message.id,
                 platform_specific_user_id=message.author.id,
                 global_user_id=message.author.id,
-                attachments=message.attachments,
+                attachments=attachments,
                 replies_to_message_id=(
                     message.reference.message_id if message.reference else None
                 ),

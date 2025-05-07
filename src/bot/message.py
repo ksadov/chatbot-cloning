@@ -24,7 +24,7 @@ class Message:
         global_user_id: Optional[str] = None,
         server_nickname: Optional[str] = None,
         account_username: Optional[str] = None,
-        attachments: Optional[Dict[str, str]] = None,
+        attachments: [Dict[str, str]] = [],
         id: Optional[str] = None,
         platform_specific_message_id: Optional[str] = None,
         replies_to_message_id: Optional[str] = None,
@@ -50,14 +50,29 @@ class Message:
             else str(uuid.uuid4())
         )
 
+    def attachments_str(self):
+        if self.attachments:
+            return "Attachments: " + ", ".join(
+                [
+                    f"{attachment['filename']} ({attachment['url']})"
+                    for attachment in self.attachments
+                ]
+            )
+        else:
+            return ""
+
     def __str__(self):
-        return f"Message(conversation={self.conversation}, user_id={self.sender_name}, timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M') if self.timestamp else 'None'}, content={self.text_content})"
+        return (
+            f"Message(conversation={self.conversation}, user_id={self.sender_name}, "
+            f"timestamp={self.timestamp.strftime('%Y-%m-%d %H:%M') if self.timestamp else 'None'}, "
+            f"content={self.text_content} attachments={self.attachments})"
+        )
 
     def rag_string(self, include_timestamp: bool):
         if include_timestamp and self.timestamp:
-            return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.sender_name}: {self.text_content}"
+            return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.sender_name}: {self.text_content}\n {self.attachments_str()}"
         else:
-            return f"{self.sender_name}: {self.text_content}"
+            return f"{self.sender_name}: {self.text_content}\n {self.attachments_str()}"
 
 
 class ReactionMessage(Message):
